@@ -1,0 +1,14 @@
+{
+    "private":  true,
+    "workspaces":  [
+                       "frontend",
+                       "backend/api-gateway",
+                       "backend/services/*"
+                   ],
+    "name":  "labflow",
+    "version":  "0.1.0",
+    "scripts":  {
+                    "validate":  "npm run validate:structure",
+                    "validate:structure":  "node scripts/validate-structure.js"
+                }
+}

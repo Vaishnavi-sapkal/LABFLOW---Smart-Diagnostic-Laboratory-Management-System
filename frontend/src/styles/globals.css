@@ -1,0 +1,10 @@
+@import './design-tokens.css';
+@import './components.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: rgb(var(--color-surface-muted)); color: rgb(var(--color-ink)); font-family: var(--font-sans); }
+button, input, select, textarea { font: inherit; }

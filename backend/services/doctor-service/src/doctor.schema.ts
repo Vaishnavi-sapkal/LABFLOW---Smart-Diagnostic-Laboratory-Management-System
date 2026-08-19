@@ -1,0 +1,3 @@
+// doctor schema placeholder.
+
+export {};

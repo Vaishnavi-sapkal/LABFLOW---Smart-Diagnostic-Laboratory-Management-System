@@ -1,0 +1,3 @@
+// verification schema placeholder.
+
+export {};

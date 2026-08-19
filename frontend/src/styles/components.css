@@ -1,0 +1,4 @@
+@layer components {
+  .focus-ring { @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2; }
+  .card { @apply rounded-card border bg-surface shadow-card; border-color: rgb(var(--color-border)); }
+}

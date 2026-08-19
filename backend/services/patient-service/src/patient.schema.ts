@@ -1,0 +1,3 @@
+// Patient schema placeholder.
+
+export {};

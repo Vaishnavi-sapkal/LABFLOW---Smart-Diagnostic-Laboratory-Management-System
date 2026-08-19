@@ -1,0 +1,36 @@
+{
+    "include":  [
+                    "src",
+                    "../packages/ui/src",
+                    "../packages/utils/src"
+                ],
+    "compilerOptions":  {
+                            "allowSyntheticDefaultImports":  true,
+                            "noEmit":  true,
+                            "moduleResolution":  "Bundler",
+                            "strict":  true,
+                            "module":  "ESNext",
+                            "forceConsistentCasingInFileNames":  true,
+                            "useDefineForClassFields":  true,
+                            "skipLibCheck":  true,
+                            "esModuleInterop":  true,
+                            "isolatedModules":  true,
+                            "target":  "ES2020",
+                            "resolveJsonModule":  true,
+                            "lib":  [
+                                        "ES2020",
+                                        "DOM",
+                                        "DOM.Iterable"
+                                    ],
+                            "jsx":  "react-jsx",
+                            "baseUrl":  ".",
+                            "paths":  {
+                                          "@labflow/ui/*":  [
+                                                                "../packages/ui/src/*"
+                                                            ],
+                                          "@labflow/utils/*":  [
+                                                                   "../packages/utils/src/*"
+                                                               ]
+                                      }
+                        }
+}

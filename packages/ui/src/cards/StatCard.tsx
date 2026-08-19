@@ -1,0 +1,2 @@
+import type { ReactNode } from 'react';
+export function StatCard({ label, value, icon }: { label: string; value: string; icon: ReactNode }) { return <article className="card flex items-start justify-between p-5"><div><p className="text-sm text-ink-muted">{label}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p></div><div className="rounded-ui bg-brand-50 p-3 text-brand-600">{icon}</div></article>; }

@@ -1,0 +1,3 @@
+// result schema placeholder.
+
+export {};

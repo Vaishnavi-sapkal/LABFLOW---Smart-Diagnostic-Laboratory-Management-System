@@ -1,0 +1,20 @@
+{
+    "include":  [
+                    "src/**/*.ts"
+                ],
+    "compilerOptions":  {
+                            "allowSyntheticDefaultImports":  true,
+                            "target":  "ES2021",
+                            "baseUrl":  "./",
+                            "strict":  true,
+                            "declaration":  true,
+                            "module":  "commonjs",
+                            "incremental":  true,
+                            "sourceMap":  true,
+                            "skipLibCheck":  true,
+                            "outDir":  "./dist",
+                            "emitDecoratorMetadata":  true,
+                            "removeComments":  true,
+                            "experimentalDecorators":  true
+                        }
+}

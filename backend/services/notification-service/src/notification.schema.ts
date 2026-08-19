@@ -1,0 +1,3 @@
+// notification schema placeholder.
+
+export {};

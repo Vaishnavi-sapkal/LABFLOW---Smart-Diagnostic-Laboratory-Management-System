@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+coverage/
+.vite/
+*.log
+frontend/dist/
+frontend/tsconfig.tsbuildinfo

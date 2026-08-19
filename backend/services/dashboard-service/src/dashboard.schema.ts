@@ -1,0 +1,3 @@
+// dashboard schema placeholder.
+
+export {};
