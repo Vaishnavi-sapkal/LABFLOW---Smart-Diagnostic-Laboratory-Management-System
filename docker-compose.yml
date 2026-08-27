@@ -1,0 +1,215 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/api-gateway
+    environment:
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      PATIENT_SERVICE_URL: http://patient-service:3002
+      SAMPLE_SERVICE_URL: http://sample-service:3003
+      TEST_SERVICE_URL: http://test-service:3004
+      RESULT_SERVICE_URL: http://result-service:3005
+      REPORT_SERVICE_URL: http://report-service:3006
+      BOOKING_SERVICE_URL: http://booking-service:3007
+      DOCTOR_SERVICE_URL: http://doctor-service:3008
+      BILLING_SERVICE_URL: http://billing-service:3009
+      VERIFICATION_SERVICE_URL: http://verification-service:3010
+      NOTIFICATION_SERVICE_URL: http://notification-service:3011
+      DASHBOARD_SERVICE_URL: http://dashboard-service:3012
+    ports:
+      - "3000:3000"
+    depends_on:
+      mongo:
+        condition: service_started
+  auth-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/auth-service
+    environment:
+      PORT: 3001
+      MONGO_URI: mongodb://mongo:27017/labflow_auth
+    ports:
+      - "3001:3001"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  patient-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/patient-service
+    environment:
+      PORT: 3002
+      MONGO_URI: mongodb://mongo:27017/labflow_patient
+    ports:
+      - "3002:3002"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  sample-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/sample-service
+    environment:
+      PORT: 3003
+      MONGO_URI: mongodb://mongo:27017/labflow_sample
+    ports:
+      - "3003:3003"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  test-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/test-service
+    environment:
+      PORT: 3004
+      MONGO_URI: mongodb://mongo:27017/labflow_test
+    ports:
+      - "3004:3004"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  result-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/result-service
+    environment:
+      PORT: 3005
+      MONGO_URI: mongodb://mongo:27017/labflow_result
+    ports:
+      - "3005:3005"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  report-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/report-service
+    environment:
+      PORT: 3006
+      MONGO_URI: mongodb://mongo:27017/labflow_report
+    ports:
+      - "3006:3006"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/booking-service
+    environment:
+      PORT: 3007
+      MONGO_URI: mongodb://mongo:27017/labflow_booking
+    ports:
+      - "3007:3007"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  doctor-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/doctor-service
+    environment:
+      PORT: 3008
+      MONGO_URI: mongodb://mongo:27017/labflow_doctor
+    ports:
+      - "3008:3008"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  billing-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/billing-service
+    environment:
+      PORT: 3009
+      MONGO_URI: mongodb://mongo:27017/labflow_billing
+    ports:
+      - "3009:3009"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  verification-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/verification-service
+    environment:
+      PORT: 3010
+      MONGO_URI: mongodb://mongo:27017/labflow_verification
+    ports:
+      - "3010:3010"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/notification-service
+    environment:
+      PORT: 3011
+      MONGO_URI: mongodb://mongo:27017/labflow_notification
+    ports:
+      - "3011:3011"
+    depends_on:
+      mongo:
+        condition: service_started
+
+  dashboard-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/dashboard-service
+    environment:
+      PORT: 3012
+      MONGO_URI: mongodb://mongo:27017/labflow_dashboard
+    ports:
+      - "3012:3012"
+    depends_on:
+      mongo:
+        condition: service_started
+volumes:
+  mongo-data:
+
