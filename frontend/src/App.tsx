@@ -1,14 +1,33 @@
-import { Bell, ChevronDown, FlaskConical, Plus, Search, Users } from 'lucide-react';
-import { Badge } from '@labflow/ui/ui/Badge';
-import { Button } from '@labflow/ui/ui/Button';
-import { Input } from '@labflow/ui/ui/Input';
-import { Skeleton } from '@labflow/ui/ui/Skeleton';
-import { StatCard } from '@labflow/ui/cards/StatCard';
-import { Sidebar } from '@labflow/ui/navigation/Sidebar';
-import { Alert } from '@labflow/ui/feedback/Alert';
-import { DataCell, DataTable } from '@labflow/ui/data/DataTable';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './components/layout/AppLayout';
+import { Billing } from './pages/Billing';
+import { Dashboard } from './pages/Dashboard';
+import { FinalReportPreview } from './pages/FinalReportPreview';
+import { Login } from './pages/Login';
+import { PatientPortal } from './pages/PatientPortal';
+import { PatientRegistration } from './pages/PatientRegistration';
+import { ResultEntry } from './pages/ResultEntry';
+import { ResultVerification } from './pages/ResultVerification';
+import { SampleTracking } from './pages/SampleTracking';
+import { TestBooking } from './pages/TestBooking';
 
-function App() {
-  return <div className="min-h-screen bg-surface-muted lg:flex"><Sidebar /><main className="min-w-0 flex-1"><header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 lg:px-8"><div className="relative w-full max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" size={17} /><Input aria-label="Search" className="pl-9" placeholder="Search patients, tests, reports..." /></div><div className="ml-4 flex items-center gap-3"><Button variant="ghost" className="w-10 px-0" aria-label="Notifications"><Bell size={18} /></Button><div className="hidden items-center gap-2 text-sm font-medium sm:flex">Admin <ChevronDown size={16} /></div></div></header><div className="mx-auto max-w-7xl p-5 lg:p-8"><div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-medium text-brand-600">Diagnostic operations</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Laboratory overview</h1><p className="mt-1 text-sm text-ink-muted">A reusable LabFlow design-system starter.</p></div><Button><Plus size={17} /> New booking</Button></div><Alert>Design tokens and reusable UI primitives are ready for product screens.</Alert><section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Today's bookings" value="128" icon={<Users size={22} />} /><StatCard label="Samples in progress" value="46" icon={<FlaskConical size={22} />} /><StatCard label="Reports ready" value="82" icon={<FlaskConical size={22} />} /><article className="card p-5"><p className="text-sm text-ink-muted">Loading state</p><Skeleton className="mt-4 h-8 w-20" /></article></section><section className="mt-7"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Recent bookings</h2><Button size="sm" variant="secondary">View all</Button></div><DataTable headings={['Patient', 'Test', 'Status', 'Collected']}><tr><DataCell><div className="font-medium">Aarav Sharma</div><div className="text-xs text-ink-muted">LF-2026-00128</div></DataCell><DataCell>Complete Blood Count</DataCell><DataCell><Badge tone="warning">In progress</Badge></DataCell><DataCell className="text-ink-muted">Today, 10:24</DataCell></tr><tr><DataCell><div className="font-medium">Meera Patel</div><div className="text-xs text-ink-muted">LF-2026-00127</div></DataCell><DataCell>Thyroid Profile</DataCell><DataCell><Badge tone="success">Ready</Badge></DataCell><DataCell className="text-ink-muted">Today, 09:52</DataCell></tr></DataTable></section></div></main></div>;
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<Login />} path="/login" />
+      <Route element={<AppLayout />}>
+        <Route element={<Navigate replace to="/dashboard" />} index />
+        <Route element={<Dashboard />} path="/dashboard" />
+        <Route element={<PatientRegistration />} path="/patients/register" />
+        <Route element={<TestBooking />} path="/bookings/new" />
+        <Route element={<Billing />} path="/billing" />
+        <Route element={<SampleTracking />} path="/samples" />
+        <Route element={<ResultEntry />} path="/results/entry" />
+        <Route element={<ResultVerification />} path="/results/verification" />
+        <Route element={<FinalReportPreview />} path="/reports/preview" />
+        <Route element={<PatientPortal />} path="/portal" />
+      </Route>
+      <Route element={<Navigate replace to="/dashboard" />} path="*" />
+    </Routes>
+  );
 }
-export default App;
