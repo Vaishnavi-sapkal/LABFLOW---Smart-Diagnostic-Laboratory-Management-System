@@ -10,7 +10,6 @@ import {
 
 import {
   ApiBearerAuth,
-  ApiBody,
   ApiOperation,
   ApiResponse,
   ApiTags,
@@ -19,6 +18,8 @@ import {
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
+import { LoginUserDto } from './dto/login-user.dto';
+import { RegisterUserDto } from './dto/register-user.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -36,35 +37,11 @@ export class AuthController {
   @ApiOperation({
     summary: 'Register a new user',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: {
-          type: 'string',
-          example: 'Shruti',
-        },
-        email: {
-          type: 'string',
-          example: 'shrutitest2026@gmail.com',
-        },
-        password: {
-          type: 'string',
-          example: '123456',
-        },
-        role: {
-          type: 'string',
-          example: 'patient',
-        },
-      },
-      required: ['name', 'email', 'password', 'role'],
-    },
-  })
   @ApiResponse({
     status: 201,
     description: 'User registered successfully',
   })
-  async register(@Body() data: any) {
+  async register(@Body() data: RegisterUserDto) {
     return this.authLogic.register(data);
   }
 
@@ -76,22 +53,6 @@ export class AuthController {
   @ApiOperation({
     summary: 'Login user and generate JWT token',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: {
-          type: 'string',
-          example: 'shrutitest2026@gmail.com',
-        },
-        password: {
-          type: 'string',
-          example: '123456',
-        },
-      },
-      required: ['email', 'password'],
-    },
-  })
   @ApiResponse({
     status: 200,
     description: 'Login successful and JWT token generated',
@@ -100,7 +61,7 @@ export class AuthController {
     status: 401,
     description: 'Invalid email or password',
   })
-  async login(@Body() data: any) {
+  async login(@Body() data: LoginUserDto) {
     return this.authLogic.login(data);
   }
 
