@@ -3,6 +3,16 @@ import { HydratedDocument } from 'mongoose';
 
 export type TestDocument = HydratedDocument<Test>;
 
+@Schema({ _id: false })
+export class TestParameter {
+  @Prop({ required: true, trim: true }) name!: string;
+  @Prop({ required: true, trim: true }) unit!: string;
+  @Prop({ required: true }) referenceMin!: number;
+  @Prop({ required: true }) referenceMax!: number;
+}
+
+export const TestParameterSchema = SchemaFactory.createForClass(TestParameter);
+
 @Schema({ timestamps: true })
 export class Test {
   @Prop({ required: true, trim: true })
@@ -26,6 +36,9 @@ export class Test {
 
   @Prop({ default: false })
   isPackage!: boolean;
+
+  @Prop({ type: [TestParameterSchema], default: [] })
+  parameters!: TestParameter[];
 
   // IDs reference individual Test documents; packages must not be nested.
   @Prop({ type: [String], default: [] })

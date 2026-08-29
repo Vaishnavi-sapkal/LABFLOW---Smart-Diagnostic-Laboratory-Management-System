@@ -5,7 +5,14 @@ import { TestModule } from './test.module';
 import { Test, TestDocument } from './test.schema';
 
 const SAMPLE_TESTS = [
-  { name: 'Complete Blood Count', code: 'CBC', category: 'Hematology', price: 480, turnaroundHours: 4 },
+  { name: 'Complete Blood Count', code: 'CBC', category: 'Hematology', price: 480, turnaroundHours: 4, parameters: [
+    { name: 'Hemoglobin', unit: 'g/dL', referenceMin: 13, referenceMax: 17 }, { name: 'Total RBC Count', unit: 'million/µL', referenceMin: 4.5, referenceMax: 5.5 },
+    { name: 'Hematocrit (PCV)', unit: '%', referenceMin: 40, referenceMax: 50 }, { name: 'MCV', unit: 'fL', referenceMin: 83, referenceMax: 101 },
+    { name: 'MCH', unit: 'pg', referenceMin: 27, referenceMax: 32 }, { name: 'MCHC', unit: 'g/dL', referenceMin: 31.5, referenceMax: 34.5 },
+    { name: 'Total WBC Count', unit: 'cells/µL', referenceMin: 4000, referenceMax: 11000 }, { name: 'Neutrophils', unit: '%', referenceMin: 40, referenceMax: 75 },
+    { name: 'Lymphocytes', unit: '%', referenceMin: 20, referenceMax: 45 }, { name: 'Monocytes', unit: '%', referenceMin: 2, referenceMax: 10 },
+    { name: 'Eosinophils', unit: '%', referenceMin: 1, referenceMax: 6 }, { name: 'Platelet Count', unit: 'lakh/µL', referenceMin: 1.5, referenceMax: 4.5 },
+  ] },
   { name: 'Liver Function Test', code: 'LFT', category: 'Biochemistry', price: 850, turnaroundHours: 6, fastingRequired: true },
   { name: 'Kidney Function Test', code: 'KFT', category: 'Biochemistry', price: 780, turnaroundHours: 6, fastingRequired: true },
   { name: 'Lipid Profile', code: 'LIPID', category: 'Biochemistry', price: 760, turnaroundHours: 6, fastingRequired: true },
@@ -33,7 +40,7 @@ async function seed() {
     SAMPLE_TESTS.map((test) => ({
       updateOne: {
         filter: { code: test.code },
-        update: { $set: { ...test, fastingRequired: test.fastingRequired ?? false, isPackage: false } },
+        update: { $set: { ...test, fastingRequired: test.fastingRequired ?? false, isPackage: false, parameters: test.parameters ?? [] } },
         upsert: true,
       },
     })),

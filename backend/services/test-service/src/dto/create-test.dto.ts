@@ -7,7 +7,15 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
+
+export class TestParameterDto {
+  @IsString() @IsNotEmpty() name!: string;
+  @IsString() @IsNotEmpty() unit!: string;
+  @Type(() => Number) @IsNumber() referenceMin!: number;
+  @Type(() => Number) @IsNumber() referenceMax!: number;
+}
 
 export class CreateTestDto {
   @IsString()
@@ -44,4 +52,10 @@ export class CreateTestDto {
   @IsArray()
   @IsString({ each: true })
   includedTestIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TestParameterDto)
+  parameters?: TestParameterDto[];
 }
