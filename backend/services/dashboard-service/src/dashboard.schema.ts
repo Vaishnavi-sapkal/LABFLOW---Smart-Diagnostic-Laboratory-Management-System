@@ -1,3 +1,6 @@
-// dashboard schema placeholder.
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-export {};
+@Schema({ timestamps: true })
+export class Dashboard {}
+
+export const DashboardSchema = SchemaFactory.createForClass(Dashboard);
