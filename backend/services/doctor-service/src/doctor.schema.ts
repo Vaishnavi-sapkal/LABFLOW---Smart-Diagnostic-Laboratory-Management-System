@@ -14,6 +14,12 @@ export class Doctor {
   @Prop({ trim: true })
   specialization?: string;
 
+  @Prop({ trim: true })
+  qualification?: string;
+
+  @Prop({ trim: true })
+  registrationNumber?: string;
+
   @Prop({ trim: true, lowercase: true })
   email?: string;
 

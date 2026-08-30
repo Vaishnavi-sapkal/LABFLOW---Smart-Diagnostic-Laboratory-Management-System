@@ -41,6 +41,10 @@ export class CreateTestDto {
   turnaroundHours!: number;
 
   @IsOptional()
+  @IsString()
+  method?: string;
+
+  @IsOptional()
   @IsBoolean()
   fastingRequired?: boolean;
 

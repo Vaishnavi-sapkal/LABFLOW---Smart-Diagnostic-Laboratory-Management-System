@@ -11,6 +11,16 @@ export class CreateDoctorDto {
   specialization?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  qualification?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  registrationNumber?: string;
+
+  @IsOptional()
   @IsEmail()
   email?: string;
 

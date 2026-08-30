@@ -5,9 +5,24 @@ import { DoctorModule } from './doctor.module';
 import { Doctor, DoctorDocument } from './doctor.schema';
 
 const SAMPLE_DOCTORS = [
-  { fullName: 'Dr. Priya Sharma', specialization: 'General Physician' },
-  { fullName: 'Dr. Rahul Kapoor', specialization: 'Endocrinologist' },
-  { fullName: 'Dr. Anjali Roy', specialization: 'General Physician' },
+  {
+    fullName: 'Dr. Priya Sharma',
+    specialization: 'General Physician',
+    qualification: 'MBBS, MD (Pathology)',
+    registrationNumber: 'MCI-12847',
+  },
+  {
+    fullName: 'Dr. Rahul Kapoor',
+    specialization: 'Endocrinologist',
+    qualification: 'MBBS, MD (Endocrinology)',
+    registrationNumber: 'MCI-24519',
+  },
+  {
+    fullName: 'Dr. Anjali Roy',
+    specialization: 'General Physician',
+    qualification: 'MBBS, MD (General Medicine)',
+    registrationNumber: 'MCI-37682',
+  },
 ];
 
 async function seed() {

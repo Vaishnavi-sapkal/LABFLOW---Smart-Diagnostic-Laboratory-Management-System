@@ -237,6 +237,34 @@ export class ResultService {
     return result.save();
   }
 
+  async updateStatus(
+    id: string,
+    status: 'verified' | 'rejected',
+    comment?: string,
+  ) {
+    const result = await this.resultModel.findById(id).exec();
+
+    if (!result) {
+      throw new NotFoundException(
+        `Result ${id} not found`,
+      );
+    }
+
+    if (result.status !== ResultStatus.SUBMITTED) {
+      throw new BadRequestException(
+        'Only submitted results can be verified or rejected',
+      );
+    }
+
+    result.status =
+      status === 'verified'
+        ? ResultStatus.VERIFIED
+        : ResultStatus.REJECTED;
+    result.verificationComment = comment;
+
+    return result.save();
+  }
+
   async remove(id: string) {
     const result = await this.resultModel.findByIdAndDelete(id).exec();
 

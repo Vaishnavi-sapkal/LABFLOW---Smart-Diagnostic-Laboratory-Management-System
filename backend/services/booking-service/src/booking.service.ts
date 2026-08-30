@@ -66,7 +66,7 @@ export class BookingService {
       notes: createBookingDto.notes,
     };
 
-    // Retry once if a random LF-B-##### identifier collides with its unique index.
+    // Retry once if a random LF-BK-##### identifier collides with its unique index.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         return await this.bookingModel.create(data);

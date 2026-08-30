@@ -20,6 +20,7 @@ import {
 import { ResultService } from './result.service';
 import { CreateResultDto } from './dto/create-result.dto';
 import { UpdateValuesDto } from './dto/update-values.dto';
+import { SetStatusDto } from './dto/set-status.dto';
 
 @ApiTags('Results')
 @Controller('results')
@@ -176,6 +177,31 @@ export class ResultController {
   })
   submit(@Param('id') id: string) {
     return this.resultService.submit(id);
+  }
+
+  // =========================
+  // Verify or Reject Result
+  // =========================
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Verify or reject a submitted result',
+  })
+  @ApiBody({
+    type: SetStatusDto,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Result status updated successfully',
+  })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: SetStatusDto,
+  ) {
+    return this.resultService.updateStatus(
+      id,
+      dto.status,
+      dto.comment,
+    );
   }
 
   // =========================

@@ -83,6 +83,9 @@ export class Result {
 
   @Prop()
   submittedAt?: Date;
+
+  @Prop()
+  verificationComment?: string;
 }
 
 export const ResultSchema =

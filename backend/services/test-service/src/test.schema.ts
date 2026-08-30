@@ -31,6 +31,9 @@ export class Test {
   @Prop({ required: true, min: 1 })
   turnaroundHours!: number;
 
+  @Prop({ default: 'Automated Analyzer', trim: true })
+  method!: string;
+
   @Prop({ default: false })
   fastingRequired!: boolean;
 
