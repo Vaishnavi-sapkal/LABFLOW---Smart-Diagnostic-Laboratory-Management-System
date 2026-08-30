@@ -1,49 +1,294 @@
 import { useState } from 'react';
-import { Activity, CheckCircle2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Field } from '../components/ui/FormSection';
-import { Input } from '../components/ui/Input';
+import { Check, ChevronLeft, FlaskConical } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { roleLanding, useAuth } from '../app/AuthContext';
+import type { Role } from '../types/labflow';
 
-const roles = ['Admin', 'Doctor', 'Receptionist', 'Lab Technician', 'Patient'] as const;
+type LoginStep = 'role' | 'credentials';
+
+interface RoleOption {
+  id: Role;
+  label: string;
+  description: string;
+  icon: string;
+  colorVar: string;
+  bgVar: string;
+  placeholder: string;
+}
+
+const roles: RoleOption[] = [
+  {
+    id: 'Admin',
+    label: 'Administrator',
+    description: 'Full system access & configuration',
+    icon: '⚙',
+    colorVar: '--role-admin',
+    bgVar: '--role-admin-bg',
+    placeholder: 'admin@labflow.in',
+  },
+  {
+    id: 'Doctor',
+    label: 'Doctor',
+    description: 'Review results & sign-off reports',
+    icon: '🩺',
+    colorVar: '--role-doctor',
+    bgVar: '--role-doctor-bg',
+    placeholder: 'doctor@labflow.in',
+  },
+  {
+    id: 'Receptionist',
+    label: 'Receptionist',
+    description: 'Patient registration & billing',
+    icon: '🗂',
+    colorVar: '--role-receptionist',
+    bgVar: '--role-receptionist-bg',
+    placeholder: 'receptionist@labflow.in',
+  },
+  {
+    id: 'Lab Technician',
+    label: 'Lab Technician',
+    description: 'Sample processing & result entry',
+    icon: '🔬',
+    colorVar: '--role-technician',
+    bgVar: '--role-technician-bg',
+    placeholder: 'technician@labflow.in',
+  },
+  {
+    id: 'Patient',
+    label: 'Patient',
+    description: 'View reports & booking history',
+    icon: '👤',
+    colorVar: '--role-patient',
+    bgVar: '--role-patient-bg',
+    placeholder: 'patient@email.com',
+  },
+];
+
+const features = [
+  'End-to-end test lifecycle management',
+  'Real-time sample tracking & status updates',
+  'Automated report generation with digital sign-off',
+  'Role-based access for complete audit trails',
+];
+
+const stats = [
+  ['12,400+', 'Tests/month'],
+  ['99.8%', 'Uptime'],
+  ['<4 min', 'Avg turnaround'],
+];
 
 export function Login() {
-  const [role, setRole] = useState<(typeof roles)[number]>('Admin');
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [step, setStep] = useState<LoginStep>('role');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
+  const selected = roles.find((role) => role.id === selectedRole);
+
+  const handleContinue = () => {
+    if (selectedRole) setStep('credentials');
+  };
+
+  const handleLogin = () => {
+    if (!selectedRole || loading) return;
+    setLoading(true);
+    window.setTimeout(() => {
+      setRole(selectedRole);
+      setLoading(false);
+      navigate(roleLanding[selectedRole]);
+    }, 900);
+  };
 
   return (
-    <main className="grid min-h-screen bg-white lg:grid-cols-[0.95fr_1.05fr]">
-      <section className="flex min-h-[360px] flex-col justify-between bg-brand-600 p-8 text-white lg:p-12">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-ui bg-white/15"><Activity size={24} /></div>
-          <div><h1 className="text-2xl font-semibold">LabFlow</h1><p className="text-sm text-white/75">Diagnostic Laboratory Management</p></div>
+    <main className="flex min-h-screen overflow-hidden bg-surface-muted">
+      <section className="relative hidden w-[45%] min-w-[440px] flex-col overflow-hidden bg-sidebar p-12 text-white lg:flex">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.04]">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div
+              className="absolute rounded-full border border-white"
+              key={index}
+              style={{
+                width: `${(index + 1) * 120}px`,
+                height: `${(index + 1) * 120}px`,
+                left: '50%',
+                top: '60%',
+                transform: 'translate(-50%, -50%)',
+              }}
+            />
+          ))}
         </div>
-        <div className="max-w-xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.03em] text-white/70">Medtech operations platform</p>
-          <h2 className="mt-4 text-4xl font-semibold leading-tight">Structured workflows for every diagnostic sample.</h2>
-          <p className="mt-4 text-base leading-7 text-white/78">Manage bookings, samples, verification and patient reports from one clean laboratory workspace.</p>
+
+        <div className="relative z-[1]">
+          <div className="mb-16 flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-[10px] bg-gradient-to-br from-brand-600 to-accent">
+              <FlaskConical size={20} />
+            </div>
+            <div>
+              <div className="text-[22px] font-extrabold leading-tight tracking-[-0.5px]">LabFlow</div>
+              <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.09em] text-[rgb(var(--sidebar-logo-muted))]">Smart Diagnostics</div>
+            </div>
+          </div>
+
+          <h1 className="mb-4 text-[32px] font-extrabold leading-[1.2] tracking-[-0.8px]">
+            Diagnostic excellence,
+            <br />
+            digitally delivered.
+          </h1>
+          <p className="mb-12 max-w-[430px] text-[15px] leading-[1.7] text-[rgb(var(--login-panel-copy))]">
+            From patient registration to verified lab reports, LabFlow connects every step of your diagnostic workflow in one secure platform.
+          </p>
+
+          <div className="grid gap-3.5">
+            {features.map((feature) => (
+              <div className="flex items-center gap-2.5" key={feature}>
+                <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-accent/40 bg-accent/20 text-accent">
+                  <Check size={11} strokeWidth={3} />
+                </div>
+                <span className="text-[13.5px] text-[rgb(var(--sidebar-text))]">{feature}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {['12 service desks', '4 hr report TAT', '98% queue accuracy'].map((item) => <div className="rounded-card border border-white/20 bg-white/10 p-4 text-sm font-semibold" key={item}>{item}</div>)}
+
+        <div className="relative z-[1] mt-auto flex gap-8">
+          {stats.map(([value, label]) => (
+            <div key={label}>
+              <div className="text-xl font-extrabold text-white">{value}</div>
+              <div className="text-xs text-[rgb(var(--sidebar-logo-muted))]">{label}</div>
+            </div>
+          ))}
         </div>
       </section>
-      <section className="flex items-center justify-center bg-surface-muted p-6">
-        <form className="w-full max-w-[440px] rounded-card border border-border bg-white p-6 shadow-card">
-          <h2 className="text-[22px] font-semibold text-ink">Sign in</h2>
-          <p className="mt-1 text-sm text-ink-muted">Use your LabFlow workspace credentials.</p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {roles.map((item) => <button className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${role === item ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-border text-ink-muted'}`} key={item} onClick={() => setRole(item)} type="button">{item}</button>)}
-          </div>
-          <div className="mt-6 grid gap-4">
-            <Field label="Email or username"><Input defaultValue="admin@labflow.in" /></Field>
-            <Field label="Password"><Input defaultValue="labflow2026" type="password" /></Field>
-          </div>
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-ink-muted"><input className="h-4 w-4" type="checkbox" defaultChecked />Remember me</label>
-            <a className="font-semibold text-brand-700" href="#">Forgot password?</a>
-          </div>
-          <Button className="mt-6 w-full" type="button"><Link className="w-full" to="/dashboard">Login as {role}</Link></Button>
-          <p className="mt-5 flex items-center gap-2 text-xs text-ink-muted"><CheckCircle2 size={14} className="text-success" /> HIPAA-aware workflows with role-based access.</p>
-        </form>
+
+      <section className="flex flex-1 items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-[480px]">
+          {step === 'role' ? (
+            <>
+              <div className="mb-8">
+                <h2 className="mb-1.5 text-2xl font-extrabold tracking-[-0.5px] text-ink">Welcome back</h2>
+                <p className="text-sm text-ink-muted">Select your role to continue</p>
+              </div>
+
+              <div className="mb-7 flex flex-col gap-2.5">
+                {roles.map((role) => {
+                  const active = selectedRole === role.id;
+                  return (
+                    <button
+                      className="flex w-full items-center gap-3.5 rounded-[10px] border-2 p-3.5 text-left transition"
+                      key={role.id}
+                      onClick={() => setSelectedRole(role.id)}
+                      style={{
+                        borderColor: active ? `rgb(var(${role.colorVar}))` : 'rgb(var(--color-border))',
+                        background: active ? `rgb(var(${role.bgVar}))` : 'rgb(var(--color-surface))',
+                      }}
+                      type="button"
+                    >
+                      <span
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-ui border text-lg"
+                        style={{
+                          background: `rgb(var(${role.bgVar}))`,
+                          borderColor: `rgb(var(${role.colorVar}) / 0.13)`,
+                        }}
+                      >
+                        {role.icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-ink">{role.label}</span>
+                        <span className="mt-px block text-xs text-ink-muted">{role.description}</span>
+                      </span>
+                      {active ? (
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white" style={{ background: `rgb(var(${role.colorVar}))` }}>
+                          <Check size={11} strokeWidth={3} />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold transition disabled:cursor-not-allowed"
+                disabled={!selectedRole}
+                onClick={handleContinue}
+                type="button"
+              >
+                <span className={selectedRole ? 'grid h-full place-items-center rounded-[10px] bg-brand-600 text-white' : 'grid h-full place-items-center rounded-[10px] bg-border text-ink-muted'}>
+                  Continue →
+                </span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="mb-6 flex items-center gap-1.5 p-0 text-[13px] text-ink-muted" onClick={() => setStep('role')} type="button">
+                <ChevronLeft size={14} />
+                Back to role selection
+              </button>
+
+              {selected ? (
+                <div
+                  className="mb-7 flex items-center gap-3 rounded-[10px] border p-3"
+                  style={{
+                    background: `rgb(var(${selected.bgVar}))`,
+                    borderColor: `rgb(var(${selected.colorVar}) / 0.20)`,
+                  }}
+                >
+                  <span className="text-xl">{selected.icon}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-ink">Signing in as {selected.label}</div>
+                    <div className="text-xs text-ink-muted">{selected.description}</div>
+                  </div>
+                </div>
+              ) : null}
+
+              <h2 className="mb-6 text-2xl font-extrabold tracking-[-0.5px] text-ink">Sign in to LabFlow</h2>
+
+              <div className="mb-4">
+                <label className="mb-1.5 block text-[13px] font-semibold text-ink" htmlFor="email">Email address</label>
+                <input
+                  className="h-[44px] w-full rounded-ui border-[1.5px] border-border bg-white px-3.5 text-sm text-ink outline-none focus:border-brand-600"
+                  id="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={selected?.placeholder ?? 'admin@labflow.in'}
+                  type="email"
+                  value={email}
+                />
+              </div>
+
+              <div className="mb-6">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-[13px] font-semibold text-ink" htmlFor="password">Password</label>
+                  <a className="text-xs text-brand-600" href="#">Forgot password?</a>
+                </div>
+                <input
+                  className="h-[44px] w-full rounded-ui border-[1.5px] border-border bg-white px-3.5 text-sm text-ink outline-none focus:border-brand-600"
+                  id="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') handleLogin();
+                  }}
+                  placeholder="••••••••"
+                  type="password"
+                  value={password}
+                />
+              </div>
+
+              <button
+                className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold transition"
+                disabled={loading}
+                onClick={handleLogin}
+                type="button"
+              >
+                <span className={loading ? 'grid h-full place-items-center rounded-[10px] bg-[rgb(var(--color-muted))] text-ink-muted' : 'grid h-full place-items-center rounded-[10px] bg-brand-600 text-white'}>
+                  {loading ? 'Signing in…' : 'Sign in'}
+                </span>
+              </button>
+
+              <p className="mt-4 text-center text-xs text-ink-muted">Protected by 256-bit TLS encryption · HIPAA compliant</p>
+            </>
+          )}
+        </div>
       </section>
     </main>
   );

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ResultTable } from '../components/laboratory/ResultTable';
 import { Button } from '../components/ui/Button';
@@ -7,15 +8,17 @@ import { PageContainer } from '../components/layout/PageContainer';
 import { patientById, reportResults, samples } from '../data/mockData';
 
 export function ResultVerification() {
+  const [decision, setDecision] = useState<'Pending' | 'Approved' | 'Rejected'>('Pending');
+
   return (
     <PageContainer>
       <div className="grid gap-6 xl:grid-cols-[1fr_330px]">
         <section className="card p-5">
-          <div className="mb-4 flex items-center justify-between"><h2 className="text-base font-semibold">Doctor verification</h2><StatusBadge tone="danger">1 abnormal</StatusBadge></div>
+          <div className="mb-4 flex items-center justify-between"><h2 className="text-base font-semibold">Doctor verification</h2><StatusBadge tone={decision === 'Approved' ? 'success' : decision === 'Rejected' ? 'danger' : 'warning'}>{decision === 'Pending' ? '1 abnormal' : decision}</StatusBadge></div>
           <ResultTable results={reportResults} />
           <div className="mt-5 rounded-ui border border-warning bg-warning-light p-4 text-sm text-ink">Technician note: WBC is mildly elevated. Recommend doctor review before release.</div>
           <label className="mt-5 grid gap-1.5 text-xs font-medium text-ink-muted">Doctor Comments<Textarea placeholder="Add clinical comments for the final report" /></label>
-          <div className="mt-5 flex justify-end gap-3"><Button icon={<XCircle size={16} />} variant="danger-outline">Reject</Button><Button icon={<CheckCircle2 size={16} />}>Approve</Button></div>
+          <div className="mt-5 flex justify-end gap-3"><Button icon={<XCircle size={16} />} onClick={() => setDecision('Rejected')} variant="danger-outline">Reject</Button><Button icon={<CheckCircle2 size={16} />} onClick={() => setDecision('Approved')}>Approve</Button></div>
         </section>
         <aside className="card h-fit p-5 xl:sticky xl:top-24">
           <h2 className="text-base font-semibold">Pending Review Queue</h2>

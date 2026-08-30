@@ -1,20 +1,41 @@
 import { Activity, Banknote, CalendarCheck, ClipboardList, Users } from 'lucide-react';
-import { Avatar } from '../components/ui/Avatar';
+import { DoctorCard } from '../components/laboratory/DoctorCard';
 import { DataCell, DataTable } from '../components/ui/DataTable';
 import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
-import { bookings, doctors, formatInr, patientById } from '../data/mockData';
+import { useLabData } from '../app/LabDataContext';
+import { doctors, formatInr } from '../data/mockData';
 import { PageContainer } from '../components/layout/PageContainer';
 
 export function Dashboard() {
+  const { bookings, patients, reports, samples } = useLabData();
+  const revenue = bookings.reduce((sum, booking) => sum + booking.amount, 0);
+  const patientById = (id: string) => patients.find((patient) => patient.id === id) ?? patients[0];
+
   return (
     <PageContainer>
       <div className="grid gap-6">
+        <section className="rounded-[16px] border border-border bg-white p-5 shadow-card">
+          <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.03em] text-brand-600">Smart diagnostic command center</p>
+              <h2 className="mt-2 text-[26px] font-semibold leading-8">Good morning, Kavya</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">Monitor patient intake, billing clearance, lab movement, result verification and report release from a connected operational queue.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                ['Collected', samples.filter((sample) => sample.status === 'Collected').length],
+                ['Processing', samples.filter((sample) => sample.status === 'Processing').length],
+                ['Reports', reports.length],
+              ].map(([label, value]) => <div className="rounded-ui bg-brand-50 p-3" key={label}><p className="text-xl font-semibold text-brand-700">{value}</p><p className="text-[11px] font-medium text-ink-muted">{label}</p></div>)}
+            </div>
+          </div>
+        </section>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard detail="+14% from last week" icon={<Users size={21} />} label="Patients" value="1,284" />
-          <StatCard detail="38 scheduled today" icon={<CalendarCheck size={21} />} label="Bookings" value="128" />
-          <StatCard detail="Today collection" icon={<Banknote size={21} />} label="Revenue" value={formatInr(284500)} />
-          <StatCard detail="Needs verification" icon={<ClipboardList size={21} />} label="Pending Results" value="24" />
+          <StatCard detail="+14% from last week" icon={<Users size={21} />} label="Patients" value={String(patients.length)} />
+          <StatCard detail="Scheduled today" icon={<CalendarCheck size={21} />} label="Bookings" value={String(bookings.length)} />
+          <StatCard detail="Cleared and pending bills" icon={<Banknote size={21} />} label="Revenue" value={formatInr(revenue)} />
+          <StatCard detail="Needs verification" icon={<ClipboardList size={21} />} label="Pending Results" value={String(samples.filter((sample) => sample.status === 'Processing' || sample.status === 'Delayed').length)} />
         </section>
         <section className="grid gap-6 xl:grid-cols-[2fr_1fr]">
           <div className="card p-5">
@@ -22,7 +43,7 @@ export function Dashboard() {
             <DataTable columns={['Booking ID', 'Patient', 'Tests', 'Status', 'Slot']}>
               {bookings.map((booking) => {
                 const patient = patientById(booking.patientId);
-                return <tr className="hover:bg-surface-muted" key={booking.id}><DataCell><span className="font-semibold">{booking.id}</span></DataCell><DataCell>{patient.name}<div className="text-xs text-ink-muted">{patient.id}</div></DataCell><DataCell>{booking.testIds.length} selected</DataCell><DataCell><StatusBadge tone={booking.status === 'Report ready' ? 'success' : booking.status === 'Awaiting payment' ? 'warning' : 'info'}>{booking.status}</StatusBadge></DataCell><DataCell className="text-ink-muted">{booking.slot}</DataCell></tr>;
+                return <tr className="hover:bg-surface-muted" key={booking.id}><DataCell><span className="font-mono text-xs font-semibold">{booking.id}</span></DataCell><DataCell>{patient.name}<div className="font-mono text-xs text-ink-muted">{patient.id}</div></DataCell><DataCell>{booking.testIds.length} selected</DataCell><DataCell><StatusBadge tone={booking.status === 'Report ready' ? 'success' : booking.status === 'Awaiting payment' ? 'warning' : 'info'}>{booking.status}</StatusBadge></DataCell><DataCell className="text-ink-muted">{booking.slot}</DataCell></tr>;
               })}
             </DataTable>
           </div>
@@ -38,8 +59,8 @@ export function Dashboard() {
             </section>
             <section className="card p-5">
               <h2 className="text-base font-semibold">Doctors on Floor</h2>
-              <div className="mt-4 grid gap-4">
-                {doctors.map((doctor) => <div className="flex items-center gap-3" key={doctor.id}><Avatar name={doctor.name} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{doctor.name}</p><p className="text-xs text-ink-muted">{doctor.specialization}</p></div><span className={`h-2.5 w-2.5 rounded-full ${doctor.status === 'Available' ? 'bg-success' : doctor.status === 'Off duty' ? 'bg-ink-subtle' : 'bg-warning'}`} /></div>)}
+              <div className="mt-4 grid gap-3">
+                {doctors.map((doctor) => <DoctorCard doctor={doctor} key={doctor.id} />)}
               </div>
             </section>
           </div>

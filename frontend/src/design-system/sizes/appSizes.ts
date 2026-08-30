@@ -1,5 +1,6 @@
 export const AppSizes = {
-  sidebarWidth: '236px',
+  sidebarWidth: '240px',
+  sidebarCollapsedWidth: '64px',
   headerHeight: '64px',
   inputHeight: '40px',
   buttonHeight: '40px',

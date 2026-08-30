@@ -1,6 +1,6 @@
-import type { BillingItem, Booking, Doctor, LabTest, Patient, Report, Sample, User } from '../types/labflow';
+import type { BillingItem, Booking, Doctor, LabTest, Notification, Patient, Report, Sample, User } from '../types/labflow';
 
-export const user: User = { name: 'Kavya Nair', role: 'Operations Admin', initials: 'KN' };
+export const user: User = { name: 'Kavya Nair', role: 'Admin', initials: 'KN' };
 
 export const patients: Patient[] = [
   { id: 'PAT-2026-0142', name: 'Priya Joshi', age: 34, gender: 'Female', phone: '+91 98765 42110', city: 'Pune', bloodGroup: 'B+' },
@@ -21,6 +21,18 @@ export const tests: LabTest[] = [
   { id: 'T-THY', name: 'Thyroid Profile', description: 'T3, T4 and TSH screening panel', price: 1250 },
   { id: 'T-LIP', name: 'Lipid Profile', description: 'Cholesterol, HDL, LDL and triglycerides', price: 2450 },
   { id: 'T-FULL', name: 'Executive Health Panel', description: 'Comprehensive metabolic and preventive profile', price: 4800 },
+  { id: 'CBC', name: 'Complete Blood Count', description: 'Hematology screening panel', price: 480 },
+  { id: 'LFT', name: 'Liver Function Test', description: 'Biochemistry liver enzyme panel', price: 850 },
+  { id: 'KFT', name: 'Kidney Function Test', description: 'Biochemistry kidney function panel', price: 780 },
+  { id: 'LIPID', name: 'Lipid Profile', description: 'Cardiac lipid screening panel', price: 760 },
+  { id: 'TFT', name: 'Thyroid Function (T3/T4/TSH)', description: 'Endocrinology thyroid function panel', price: 890 },
+  { id: 'HBA1C', name: 'HbA1c (Glycated Hemoglobin)', description: 'Long-term glucose marker', price: 580 },
+  { id: 'FBS', name: 'Fasting Blood Sugar', description: 'Fasting glucose measurement', price: 180 },
+  { id: 'PPBS', name: 'Post-Prandial Blood Sugar', description: 'Post-meal glucose measurement', price: 180 },
+  { id: 'VIT_D', name: 'Vitamin D (25-OH)', description: 'Vitamin D deficiency screening', price: 1200 },
+  { id: 'VIT_B12', name: 'Vitamin B12', description: 'Vitamin B12 deficiency screening', price: 980 },
+  { id: 'CRP', name: 'C-Reactive Protein', description: 'Inflammation marker', price: 560 },
+  { id: 'ESR', name: 'ESR (Erythrocyte Sedimentation Rate)', description: 'Hematology inflammation marker', price: 220 },
 ];
 
 export const bookings: Booking[] = [
@@ -31,9 +43,18 @@ export const bookings: Booking[] = [
 
 export const samples: Sample[] = [
   { id: 'LAB-2026-08421', patientId: 'PAT-2026-0142', testName: 'CBC + Lipid Profile', time: '10:42 AM', status: 'Processing' },
-  { id: 'LAB-2026-08422', patientId: 'PAT-2026-0143', testName: 'Thyroid Profile', time: '11:18 AM', status: 'Collected' },
+  { id: 'LAB-2026-08422', patientId: 'PAT-2026-0143', testName: 'Thyroid Profile', time: '11:18 AM', status: 'In Transit' },
   { id: 'LAB-2026-08423', patientId: 'PAT-2026-0144', testName: 'Executive Health Panel', time: '09:50 AM', status: 'Completed' },
   { id: 'LAB-2026-08424', patientId: 'PAT-2026-0145', testName: 'CBC', time: '10:12 AM', status: 'Delayed' },
+];
+
+export const notifications: Notification[] = [
+  { id: 'NTF-01', role: 'Doctor', title: 'Verification waiting', body: 'Priya Joshi report has one abnormal marker.', category: 'Urgent', time: '2 min ago', unread: true },
+  { id: 'NTF-02', role: 'Lab Technician', title: 'Sample moved to processing', body: 'LAB-2026-08421 is ready for result entry.', category: 'Task', time: '12 min ago', unread: true },
+  { id: 'NTF-03', role: 'Receptionist', title: 'Payment pending', body: 'Rahul Patil booking BK-2026-0832 is awaiting payment.', category: 'Billing', time: '28 min ago', unread: true },
+  { id: 'NTF-04', role: 'Patient', title: 'Report ready', body: 'Your CBC + Lipid Profile report is verified.', category: 'Report', time: '1 hr ago', unread: false },
+  { id: 'NTF-05', role: 'Admin', title: 'Daily queue summary', body: '128 bookings and 24 pending results today.', category: 'System', time: 'Today', unread: false },
+  { id: 'NTF-06', role: 'All', title: 'System backup completed', body: 'Diagnostic records backup completed successfully.', category: 'System', time: 'Yesterday', unread: false },
 ];
 
 export const reportResults = [

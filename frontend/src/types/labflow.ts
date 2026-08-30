@@ -1,4 +1,5 @@
 export type Status = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type Role = 'Admin' | 'Doctor' | 'Receptionist' | 'Lab Technician' | 'Patient';
 
 export interface Patient {
   id: string;
@@ -39,7 +40,7 @@ export interface Sample {
   patientId: string;
   testName: string;
   time: string;
-  status: 'Collected' | 'Processing' | 'Completed' | 'Delayed';
+  status: 'Collected' | 'In Transit' | 'Processing' | 'Completed' | 'Delayed';
 }
 
 export interface Result {
@@ -69,6 +70,16 @@ export interface BillingItem {
 
 export interface User {
   name: string;
-  role: string;
+  role: Role;
   initials: string;
+}
+
+export interface Notification {
+  id: string;
+  role: Role | 'All';
+  title: string;
+  body: string;
+  category: 'Urgent' | 'Task' | 'Billing' | 'Report' | 'System';
+  time: string;
+  unread: boolean;
 }

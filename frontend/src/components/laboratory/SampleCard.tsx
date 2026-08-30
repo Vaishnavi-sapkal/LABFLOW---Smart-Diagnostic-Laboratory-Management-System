@@ -8,7 +8,7 @@ export function SampleCard({ code, patient, test, status }: { code: string; pati
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-ui bg-brand-50 text-brand-700"><FlaskConical size={18} /></div>
           <div>
-            <h3 className="text-sm font-semibold text-ink">{code}</h3>
+            <h3 className="font-mono text-xs font-semibold text-ink">{code}</h3>
             <p className="text-xs text-ink-muted">{patient}</p>
           </div>
         </div>

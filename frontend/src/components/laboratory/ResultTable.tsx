@@ -14,9 +14,9 @@ export function ResultTable({ results, editable, onValueChange }: { results: Res
             {results.map((result, index) => (
               <tr className={result.flag === 'High' || result.flag === 'Low' ? 'bg-danger-light/45' : 'hover:bg-surface-muted'} key={result.parameter}>
                 <td className="px-4 py-3 font-semibold">{result.parameter}</td>
-                <td className="px-4 py-3">{editable ? <Input className="h-9 w-28" onChange={(event) => onValueChange?.(index, event.target.value)} value={result.value} /> : result.value}</td>
+                <td className="px-4 py-3 font-mono text-xs">{editable ? <Input className="h-9 w-28 font-mono text-xs" onChange={(event) => onValueChange?.(index, event.target.value)} value={result.value} /> : result.value}</td>
                 <td className="px-4 py-3 text-ink-muted">{result.unit}</td>
-                <td className="px-4 py-3 text-ink-muted">{result.range}</td>
+                <td className="px-4 py-3 font-mono text-xs text-ink-muted">{result.range}</td>
                 <td className="px-4 py-3"><StatusBadge tone={result.flag === 'Normal' ? 'success' : 'danger'}>{result.flag}</StatusBadge></td>
               </tr>
             ))}

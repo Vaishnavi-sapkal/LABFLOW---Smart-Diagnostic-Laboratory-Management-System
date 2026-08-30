@@ -2,11 +2,13 @@ import { Download, Printer } from 'lucide-react';
 import { ReportPreview } from '../components/laboratory/ReportPreview';
 import { Button } from '../components/ui/Button';
 import { PageContainer } from '../components/layout/PageContainer';
-import { doctorById, patientById, reports } from '../data/mockData';
+import { useLabData } from '../app/LabDataContext';
+import { doctorById } from '../data/mockData';
 
 export function FinalReportPreview() {
+  const { patients, reports } = useLabData();
   const report = reports[0];
-  const patient = patientById(report.patientId);
+  const patient = patients.find((item) => item.id === report.patientId) ?? patients[0];
   const doctor = doctorById(report.doctorId);
 
   return (

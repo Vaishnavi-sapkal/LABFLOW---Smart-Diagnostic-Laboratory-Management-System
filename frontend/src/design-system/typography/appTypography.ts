@@ -1,5 +1,6 @@
 export const AppTypography = {
   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  monoFamily: '"JetBrains Mono", "Figma Mono", "Roboto Mono", ui-monospace, SFMono-Regular, monospace',
   pageTitle: { fontSize: '22px', lineHeight: '30px', fontWeight: 600 },
   sectionHeading: { fontSize: '16px', lineHeight: '24px', fontWeight: 600 },
   cardTitle: { fontSize: '15px', lineHeight: '22px', fontWeight: 600 },
@@ -9,4 +10,5 @@ export const AppTypography = {
   button: { fontSize: '14px', lineHeight: '20px', fontWeight: 600 },
   table: { fontSize: '13px', lineHeight: '20px', fontWeight: 400 },
   status: { fontSize: '12px', lineHeight: '16px', fontWeight: 600 },
+  identifier: { fontSize: '12px', lineHeight: '18px', fontWeight: 600 },
 } as const;

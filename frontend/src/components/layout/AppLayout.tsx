@@ -1,31 +1,20 @@
-import { useMemo, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
-const titles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/patients/register': 'Patient Registration',
-  '/bookings/new': 'Test Booking',
-  '/billing': 'Billing & Payment',
-  '/samples': 'Sample Tracking',
-  '/results/entry': 'Result Entry',
-  '/results/verification': 'Result Verification',
-  '/reports/preview': 'Final Report Preview',
-  '/portal': 'Patient Portal',
-};
-
 export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
-  const title = useMemo(() => titles[location.pathname] ?? 'LabFlow', [location.pathname]);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-surface-muted text-ink lg:flex">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="min-w-0 flex-1">
-        <Header title={title} onMenu={() => setSidebarOpen(true)} />
-        <Outlet />
+    <div className="flex h-screen overflow-hidden bg-surface-muted text-ink">
+      <Sidebar expanded={sidebarExpanded} mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header onMobileMenu={() => setMobileSidebarOpen(true)} onToggleSidebar={() => setSidebarExpanded((expanded) => !expanded)} />
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
