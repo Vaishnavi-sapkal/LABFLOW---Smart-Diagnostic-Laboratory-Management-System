@@ -1,0 +1,192 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/auth-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-auth
+      JWT_SECRET: your_super_secret_jwt_key
+      JWT_EXPIRES_IN: 1d
+    depends_on: [mongo]
+
+  patient-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/patient-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-patient
+    depends_on: [mongo]
+
+  test-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/test-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-test
+    depends_on: [mongo]
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/booking-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-booking
+      TEST_SERVICE_URL: http://test-service:3000
+      DOCTOR_SERVICE_URL: http://doctor-service:3000
+    depends_on: [mongo, test-service, doctor-service]
+
+  doctor-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/doctor-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-doctor
+    depends_on: [mongo]
+
+  sample-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/sample-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-sample
+      BOOKING_SERVICE_URL: http://booking-service:3000
+    command: ['node', 'dist/src/main.js']
+    depends_on: [mongo, booking-service]
+
+  result-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/result-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-result
+      TEST_SERVICE_URL: http://test-service:3000
+    depends_on: [mongo, test-service]
+
+  verification-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/verification-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-verification
+      RESULT_SERVICE_URL: http://result-service:3000
+      SAMPLE_SERVICE_URL: http://sample-service:3000
+      DOCTOR_SERVICE_URL: http://doctor-service:3000
+      REPORT_SERVICE_URL: http://report-service:3000
+    depends_on: [mongo, result-service, sample-service, doctor-service]
+
+  billing-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/billing-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-billing
+      BOOKING_SERVICE_URL: http://booking-service:3000
+      PATIENT_SERVICE_URL: http://patient-service:3000
+      DOCTOR_SERVICE_URL: http://doctor-service:3000
+    depends_on: [mongo, booking-service, patient-service, doctor-service]
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/notification-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-notification
+    depends_on: [mongo]
+
+  report-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/report-service
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/labflow-report
+      VERIFICATION_SERVICE_URL: http://verification-service:3000
+      RESULT_SERVICE_URL: http://result-service:3000
+      SAMPLE_SERVICE_URL: http://sample-service:3000
+      PATIENT_SERVICE_URL: http://patient-service:3000
+      DOCTOR_SERVICE_URL: http://doctor-service:3000
+    depends_on: [mongo, verification-service, result-service, sample-service, patient-service, doctor-service]
+
+  dashboard-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/services/dashboard-service
+    environment:
+      PORT: 3000
+      PATIENT_SERVICE_URL: http://patient-service:3000
+      BOOKING_SERVICE_URL: http://booking-service:3000
+      TEST_SERVICE_URL: http://test-service:3000
+      BILLING_SERVICE_URL: http://billing-service:3000
+      SAMPLE_SERVICE_URL: http://sample-service:3000
+      RESULT_SERVICE_URL: http://result-service:3000
+      VERIFICATION_SERVICE_URL: http://verification-service:3000
+      REPORT_SERVICE_URL: http://report-service:3000
+    depends_on: [patient-service, booking-service, test-service, billing-service, sample-service, result-service, verification-service, report-service]
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_PATH: backend/api-gateway
+    environment:
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3000
+      PATIENT_SERVICE_URL: http://patient-service:3000
+      TEST_SERVICE_URL: http://test-service:3000
+      BOOKING_SERVICE_URL: http://booking-service:3000
+      DOCTOR_SERVICE_URL: http://doctor-service:3000
+      SAMPLE_SERVICE_URL: http://sample-service:3000
+      RESULT_SERVICE_URL: http://result-service:3000
+      VERIFICATION_SERVICE_URL: http://verification-service:3000
+      BILLING_SERVICE_URL: http://billing-service:3000
+      NOTIFICATION_SERVICE_URL: http://notification-service:3000
+      REPORT_SERVICE_URL: http://report-service:3000
+      DASHBOARD_SERVICE_URL: http://dashboard-service:3000
+    ports:
+      - "3000:3000"
+    depends_on: [auth-service, patient-service, test-service, booking-service, doctor-service, sample-service, result-service, verification-service, billing-service, notification-service, report-service, dashboard-service]
+
+volumes:
+  mongo-data:
