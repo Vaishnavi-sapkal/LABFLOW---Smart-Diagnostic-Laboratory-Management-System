@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { login as authenticate, type AuthenticatedUser } from '../api/auth';
 import type { Role } from '../types/labflow';
 
 const roleLanding: Record<Role, string> = {
@@ -12,6 +13,8 @@ const roleLanding: Record<Role, string> = {
 interface AuthContextValue {
   role: Role;
   setRole: (role: Role) => void;
+  user: AuthenticatedUser | null;
+  login: (email: string, password: string) => Promise<Role>;
   landingPath: string;
 }
 
@@ -19,7 +22,19 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('Admin');
-  const value = useMemo(() => ({ role, setRole, landingPath: roleLanding[role] }), [role]);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
+
+  const login = async (email: string, password: string) => {
+    const response = await authenticate(email, password);
+    const authenticatedRole = toRole(response.user.role);
+
+    setRole(authenticatedRole);
+    setUser(response.user);
+
+    return authenticatedRole;
+  };
+
+  const value = useMemo(() => ({ role, setRole, user, login, landingPath: roleLanding[role] }), [role, user]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
@@ -30,3 +45,19 @@ export function useAuth() {
 }
 
 export { roleLanding };
+
+function toRole(role: string): Role {
+  const roles: Record<string, Role> = {
+    admin: 'Admin',
+    doctor: 'Doctor',
+    receptionist: 'Receptionist',
+    technician: 'Lab Technician',
+    lab_technician: 'Lab Technician',
+    patient: 'Patient',
+  };
+
+  const normalizedRole = roles[role.toLowerCase()];
+  if (!normalizedRole) throw new Error('Your account has an unsupported role.');
+
+  return normalizedRole;
+}

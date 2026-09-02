@@ -83,7 +83,8 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { setRole } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { login } = useAuth();
   const navigate = useNavigate();
   const selected = roles.find((role) => role.id === selectedRole);
 
@@ -91,14 +92,19 @@ export function Login() {
     if (selectedRole) setStep('credentials');
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!selectedRole || loading) return;
     setLoading(true);
-    window.setTimeout(() => {
-      setRole(selectedRole);
+    setError(null);
+
+    try {
+      const authenticatedRole = await login(email, password);
       setLoading(false);
-      navigate(roleLanding[selectedRole]);
-    }, 900);
+      navigate(roleLanding[authenticatedRole]);
+    } catch (error) {
+      setLoading(false);
+      setError(error instanceof Error ? error.message : 'Unable to sign in. Please try again.');
+    }
   };
 
   return (
@@ -273,6 +279,8 @@ export function Login() {
                   value={password}
                 />
               </div>
+
+              {error ? <p className="mb-4 text-sm text-danger" role="alert">{error}</p> : null}
 
               <button
                 className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold transition"
