@@ -138,7 +138,7 @@ export class BookingService {
 
     const testResults = await Promise.all(testIds.map(async (testId) => {
       try {
-        const response = await firstValueFrom(this.httpService.get<TestResponse>(`${testServiceUrl.replace(/\/$/, '')}/${testId}`));
+        const response = await firstValueFrom(this.httpService.get<TestResponse>(`${testServiceUrl.replace(/\/$/, '')}/tests/${testId}`));
         return response.data;
       } catch {
         throw new NotFoundException(`Test ${testId} was not found in test service`);
@@ -159,7 +159,7 @@ export class BookingService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get<DoctorResponse>(`${doctorServiceUrl.replace(/\/$/, '')}/${doctorId}`),
+        this.httpService.get<DoctorResponse>(`${doctorServiceUrl.replace(/\/$/, '')}/doctors/${doctorId}`),
       );
       if (!response.data.isActive) {
         throw new BadRequestException(`Doctor ${doctorId} is inactive and cannot receive bookings`);

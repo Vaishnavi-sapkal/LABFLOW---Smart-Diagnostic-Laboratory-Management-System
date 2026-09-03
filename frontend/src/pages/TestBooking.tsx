@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Clock3, Plus, Search, UserRound, X } from 'lucide-react';
 import { useLabData } from '../app/LabDataContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageContainer } from '../components/layout/PageContainer';
-import { doctors, formatInr } from '../data/mockData';
+import { formatInr } from '../data/mockData';
+import { listDoctors, type DoctorDocument } from '../api/doctors';
+import { listTests, type TestDocument } from '../api/tests';
+import { BookingRequestError, createBooking, type CreatedBooking } from '../api/bookings';
 
 type CatalogTest = {
   id: string;
@@ -23,42 +26,77 @@ type TestPackage = {
   savings: number;
 };
 
-const catalogTests: CatalogTest[] = [
-  { id: 'CBC', name: 'Complete Blood Count', category: 'Hematology', price: 480, duration: '4h', fasting: false },
-  { id: 'LFT', name: 'Liver Function Test', category: 'Biochemistry', price: 850, duration: '6h', fasting: true },
-  { id: 'KFT', name: 'Kidney Function Test', category: 'Biochemistry', price: 780, duration: '6h', fasting: true },
-  { id: 'LIPID', name: 'Lipid Profile', category: 'Biochemistry', price: 760, duration: '6h', fasting: true },
-  { id: 'TFT', name: 'Thyroid Function (T3/T4/TSH)', category: 'Endocrinology', price: 890, duration: '8h', fasting: false },
-  { id: 'HBA1C', name: 'HbA1c (Glycated Hemoglobin)', category: 'Endocrinology', price: 580, duration: '4h', fasting: false },
-  { id: 'FBS', name: 'Fasting Blood Sugar', category: 'Biochemistry', price: 180, duration: '2h', fasting: true },
-  { id: 'PPBS', name: 'Post-Prandial Blood Sugar', category: 'Biochemistry', price: 180, duration: '2h', fasting: false },
-  { id: 'VIT_D', name: 'Vitamin D (25-OH)', category: 'Vitamins', price: 1200, duration: '24h', fasting: false },
-  { id: 'VIT_B12', name: 'Vitamin B12', category: 'Vitamins', price: 980, duration: '24h', fasting: false },
-  { id: 'CRP', name: 'C-Reactive Protein', category: 'Immunology', price: 560, duration: '6h', fasting: false },
-  { id: 'ESR', name: 'ESR (Erythrocyte Sedimentation Rate)', category: 'Hematology', price: 220, duration: '2h', fasting: false },
-];
-
-const packages: TestPackage[] = [
-  { id: 'PKG_FULL', name: 'Full Body Checkup', tests: ['CBC', 'LFT', 'KFT', 'LIPID', 'TFT', 'FBS', 'VIT_D', 'VIT_B12'], price: 3999, savings: 1831 },
-  { id: 'PKG_DIAB', name: 'Diabetes Profile', tests: ['HBA1C', 'FBS', 'PPBS', 'KFT', 'LIPID'], price: 1499, savings: 681 },
-  { id: 'PKG_CARDIAC', name: 'Cardiac Risk Panel', tests: ['LIPID', 'CRP', 'CBC', 'FBS'], price: 1299, savings: 421 },
-];
-
-const categories = ['All', 'Hematology', 'Biochemistry', 'Endocrinology', 'Vitamins', 'Immunology'];
 const slots = ['08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM', '03:00 PM', '04:00 PM'];
 const unavailableSlots = new Set(['08:00 AM', '08:30 AM', '10:30 AM']);
 
+function todayIsoDate() {
+  const today = new Date();
+  const localTime = new Date(today.getTime() - (today.getTimezoneOffset() * 60_000));
+  return localTime.toISOString().slice(0, 10);
+}
+
 export function TestBooking() {
-  const { addBooking, bookings, patients } = useLabData();
+  const { addBooking, patients } = useLabData();
+  const [testDocuments, setTestDocuments] = useState<TestDocument[]>([]);
+  const [doctorDocuments, setDoctorDocuments] = useState<DoctorDocument[]>([]);
+  const [dataError, setDataError] = useState('');
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<string[]>(['CBC']);
+  const [cart, setCart] = useState<string[]>([]);
+  const [scheduledDate, setScheduledDate] = useState(todayIsoDate);
   const [selectedSlot, setSelectedSlot] = useState('09:00 AM');
   const [activeTab, setActiveTab] = useState<'tests' | 'packages'>('tests');
-  const [selectedDoctorId, setSelectedDoctorId] = useState(doctors[0]?.id ?? '');
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? '');
   const [showPatientSelect, setShowPatientSelect] = useState(false);
-  const [bookedId, setBookedId] = useState<string | null>(null);
+  const [createdBooking, setCreatedBooking] = useState<CreatedBooking | null>(null);
+  const [bookingError, setBookingError] = useState('');
   const [category, setCategory] = useState('All');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCatalog() {
+      try {
+        const [tests, doctors] = await Promise.all([listTests(), listDoctors()]);
+        if (!active) return;
+
+        setTestDocuments(tests);
+        setDoctorDocuments(doctors);
+        setSelectedDoctorId((current) => current || doctors.find((doctor) => doctor.isActive !== false)?._id || '');
+      } catch (error) {
+        if (active) setDataError(error instanceof Error ? error.message : 'Unable to load booking data. Please try again.');
+      }
+    }
+
+    void loadCatalog();
+    return () => { active = false; };
+  }, []);
+
+  const catalogTests: CatalogTest[] = testDocuments
+    .filter((test) => !test.isPackage)
+    .map((test) => ({
+      id: test._id,
+      name: test.name,
+      category: test.category,
+      price: test.price,
+      duration: `${test.turnaroundHours}h`,
+      fasting: Boolean(test.fastingRequired),
+    }));
+  const priceByTestId = new Map(catalogTests.map((test) => [test.id, test.price]));
+  const packages: TestPackage[] = testDocuments
+    .filter((test) => test.isPackage)
+    .map((test) => {
+      const tests = test.includedTestIds ?? [];
+      const individualTotal = tests.reduce((total, testId) => total + (priceByTestId.get(testId) ?? 0), 0);
+      return {
+        id: test._id,
+        name: test.name,
+        tests,
+        price: test.price,
+        savings: Math.max(0, individualTotal - test.price),
+      };
+    });
+  const categories = ['All', ...new Set(catalogTests.map((test) => test.category))];
 
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
   const cartItems = catalogTests.filter((test) => cart.includes(test.id));
@@ -73,23 +111,43 @@ export function TestBooking() {
   const toggleCart = (id: string) => setCart((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const addPackage = (pkg: TestPackage) => setCart((current) => [...new Set([...current, ...pkg.tests])]);
 
-  const handleConfirm = () => {
-    if (!cart.length || !selectedPatient) return;
+  const handleConfirm = async () => {
+    if (!cart.length || !selectedPatient || !selectedDoctorId) {
+      setBookingError('Select a patient, an active doctor, and at least one test before confirming.');
+      return;
+    }
 
-    const bookingId = `BK-2026-${String(834 + bookings.length).padStart(4, '0')}`;
-    addBooking({
-      id: bookingId,
-      patientId: selectedPatient.id,
-      testIds: cart,
-      doctorId: selectedDoctorId,
-      status: 'Sample collected',
-      slot: `19 Aug, ${selectedSlot}`,
-      amount: catalogTotal,
-    });
-    setBookedId(bookingId);
+    setBookingError('');
+    try {
+      const booking = await createBooking({
+        patientId: selectedPatientId,
+        doctorId: selectedDoctorId,
+        testIds: cart,
+        scheduledDate,
+        scheduledSlot: selectedSlot,
+      });
+
+      addBooking({
+        id: booking.bookingId,
+        patientId: booking.patientId,
+        testIds: booking.items.map((item) => item.testId),
+        doctorId: booking.doctorId,
+        status: booking.status,
+        slot: `${booking.scheduledDate.slice(0, 10)}, ${booking.scheduledSlot}`,
+        amount: booking.totalAmount,
+      });
+      setCreatedBooking(booking);
+    } catch (error) {
+      if (error instanceof BookingRequestError && error.status === 409) {
+        setBookingError('This doctor is already booked for that time. Please pick a different slot.');
+        return;
+      }
+
+      setBookingError(error instanceof Error ? error.message : 'Unable to create booking. Please try again.');
+    }
   };
 
-  if (bookedId) {
+  if (createdBooking) {
     return (
       <PageContainer>
         <div className="flex justify-center px-2 py-8 lg:py-12">
@@ -98,13 +156,14 @@ export function TestBooking() {
               <Check size={30} strokeWidth={3} />
             </div>
             <h1 className="mb-2 text-[22px] font-extrabold leading-tight text-ink">Tests Booked Successfully!</h1>
-            <p className="mb-6 text-sm leading-6 text-ink-muted">Booking confirmed for {selectedSlot} today. Sample collection instructions sent to patient.</p>
+            <p className="mb-6 text-sm leading-6 text-ink-muted">Booking confirmed for {createdBooking.scheduledSlot} on {createdBooking.scheduledDate.slice(0, 10)}. Sample collection instructions sent to patient.</p>
             <div className="mb-5 rounded-card bg-muted px-5 py-4 text-left">
               <div className="mb-1 font-mono text-xs text-ink-muted">BOOKING ID</div>
-              <div className="font-mono text-lg font-bold text-brand-600">{bookedId.replace('BK-2026-', 'LF-BK-')}</div>
+              <div className="font-mono text-lg font-bold text-brand-600">{createdBooking.bookingId}</div>
+              <div className="mt-2 text-sm font-semibold text-ink">Total amount: {formatInr(createdBooking.totalAmount)}</div>
             </div>
             <div className="flex justify-center gap-2.5">
-              <Button variant="secondary" onClick={() => setBookedId(null)}>New Booking</Button>
+              <Button variant="secondary" onClick={() => setCreatedBooking(null)}>New Booking</Button>
               <Button>Generate Bill</Button>
             </div>
           </div>
@@ -119,6 +178,7 @@ export function TestBooking() {
         <header>
           <h1 className="mb-1 text-[22px] font-extrabold leading-tight text-ink">Test Booking</h1>
           <p className="text-[13.5px] text-ink-muted">Search and select tests or packages, assign a doctor, and schedule a collection slot</p>
+          {dataError && <p className="mt-2 text-sm text-danger">{dataError}</p>}
         </header>
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -216,11 +276,12 @@ export function TestBooking() {
 
           <aside className="grid h-fit gap-4 xl:sticky xl:top-24">
             <CartPanel cartItems={cartItems} onRemove={toggleCart} total={catalogTotal} />
-            <DoctorPanel selectedDoctorId={selectedDoctorId} onSelect={setSelectedDoctorId} />
-            <SlotPanel selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
+            <DoctorPanel doctors={doctorDocuments.filter((doctor) => doctor.isActive !== false)} selectedDoctorId={selectedDoctorId} onSelect={setSelectedDoctorId} />
+            <SlotPanel scheduledDate={scheduledDate} onDateChange={setScheduledDate} selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
             <Button className="h-[46px] w-full rounded-card text-[15px] font-bold" disabled={!cart.length} onClick={handleConfirm}>
               Confirm Booking - {formatInr(catalogTotal)}
             </Button>
+            {bookingError && <p className="text-sm text-danger">{bookingError}</p>}
           </aside>
         </div>
       </div>
@@ -290,26 +351,26 @@ function CartPanel({ cartItems, onRemove, total }: { cartItems: CatalogTest[]; o
   );
 }
 
-function DoctorPanel({ selectedDoctorId, onSelect }: { selectedDoctorId: string; onSelect: (id: string) => void }) {
+function DoctorPanel({ doctors, selectedDoctorId, onSelect }: { doctors: DoctorDocument[]; selectedDoctorId: string; onSelect: (id: string) => void }) {
   return (
     <section className="rounded-card border border-border bg-white p-5">
       <h2 className="mb-3 text-sm font-bold text-ink">Assign Doctor</h2>
       <div className="grid gap-1.5">
-        {doctors.slice(0, 3).map((doctor, index) => {
-          const selected = selectedDoctorId === doctor.id;
+        {doctors.slice(0, 3).map((doctor) => {
+          const selected = selectedDoctorId === doctor._id;
           return (
             <button
               className={`flex items-center gap-2.5 rounded-ui border p-2 text-left transition ${selected ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-transparent hover:bg-surface-muted'}`}
-              key={doctor.id}
-              onClick={() => onSelect(doctor.id)}
+              key={doctor._id}
+              onClick={() => onSelect(doctor._id)}
               type="button"
             >
               <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-600 to-accent text-xs font-bold text-white">
-                {doctor.name.replace('Dr. ', '').charAt(0)}
+                {doctor.fullName.replace('Dr. ', '').charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-semibold text-ink">{doctor.name}</div>
-                <div className="text-[11px] text-ink-muted">{index + 2} pending</div>
+                <div className="truncate text-[13px] font-semibold text-ink">{doctor.fullName}</div>
+                <div className="text-[11px] text-ink-muted">{doctor.specialization ?? 'Doctor'}</div>
               </div>
               {selected && <Check className="shrink-0 text-brand-600" size={15} strokeWidth={3} />}
             </button>
@@ -320,11 +381,11 @@ function DoctorPanel({ selectedDoctorId, onSelect }: { selectedDoctorId: string;
   );
 }
 
-function SlotPanel({ selectedSlot, onSelect }: { selectedSlot: string; onSelect: (slot: string) => void }) {
+function SlotPanel({ scheduledDate, onDateChange, selectedSlot, onSelect }: { scheduledDate: string; onDateChange: (date: string) => void; selectedSlot: string; onSelect: (slot: string) => void }) {
   return (
     <section className="rounded-card border border-border bg-white p-5">
       <h2 className="mb-1 text-sm font-bold text-ink">Schedule Slot</h2>
-      <p className="mb-3 text-xs text-ink-muted">19 August 2026</p>
+      <Input className="mb-3 h-9" min={todayIsoDate()} onChange={(event) => onDateChange(event.target.value)} type="date" value={scheduledDate} />
       <div className="grid grid-cols-3 gap-1.5">
         {slots.map((slot) => {
           const unavailable = unavailableSlots.has(slot);

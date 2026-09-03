@@ -1,11 +1,4 @@
 services:
-  mongo:
-    image: mongo:7
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-
   auth-service:
     build:
       context: .
@@ -14,10 +7,9 @@ services:
         SERVICE_PATH: backend/services/auth-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-auth
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-auth?retryWrites=true&w=majority
       JWT_SECRET: your_super_secret_jwt_key
       JWT_EXPIRES_IN: 1d
-    depends_on: [mongo]
 
   patient-service:
     build:
@@ -27,8 +19,7 @@ services:
         SERVICE_PATH: backend/services/patient-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-patient
-    depends_on: [mongo]
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-patient?retryWrites=true&w=majority
 
   test-service:
     build:
@@ -38,8 +29,7 @@ services:
         SERVICE_PATH: backend/services/test-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-test
-    depends_on: [mongo]
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-test?retryWrites=true&w=majority
 
   booking-service:
     build:
@@ -49,10 +39,10 @@ services:
         SERVICE_PATH: backend/services/booking-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-booking
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-booking?retryWrites=true&w=majority
       TEST_SERVICE_URL: http://test-service:3000
       DOCTOR_SERVICE_URL: http://doctor-service:3000
-    depends_on: [mongo, test-service, doctor-service]
+    depends_on: [test-service, doctor-service]
 
   doctor-service:
     build:
@@ -62,8 +52,7 @@ services:
         SERVICE_PATH: backend/services/doctor-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-doctor
-    depends_on: [mongo]
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-doctor?retryWrites=true&w=majority
 
   sample-service:
     build:
@@ -73,10 +62,10 @@ services:
         SERVICE_PATH: backend/services/sample-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-sample
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-sample?retryWrites=true&w=majority
       BOOKING_SERVICE_URL: http://booking-service:3000
-    command: ['node', 'dist/src/main.js']
-    depends_on: [mongo, booking-service]
+    command: ["node", "dist/src/main.js"]
+    depends_on: [booking-service]
 
   result-service:
     build:
@@ -86,9 +75,9 @@ services:
         SERVICE_PATH: backend/services/result-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-result
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-result?retryWrites=true&w=majority
       TEST_SERVICE_URL: http://test-service:3000
-    depends_on: [mongo, test-service]
+    depends_on: [test-service]
 
   verification-service:
     build:
@@ -98,12 +87,12 @@ services:
         SERVICE_PATH: backend/services/verification-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-verification
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-verification?retryWrites=true&w=majority
       RESULT_SERVICE_URL: http://result-service:3000
       SAMPLE_SERVICE_URL: http://sample-service:3000
       DOCTOR_SERVICE_URL: http://doctor-service:3000
       REPORT_SERVICE_URL: http://report-service:3000
-    depends_on: [mongo, result-service, sample-service, doctor-service]
+    depends_on: [result-service, sample-service, doctor-service]
 
   billing-service:
     build:
@@ -113,11 +102,11 @@ services:
         SERVICE_PATH: backend/services/billing-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-billing
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-billing?retryWrites=true&w=majority
       BOOKING_SERVICE_URL: http://booking-service:3000
       PATIENT_SERVICE_URL: http://patient-service:3000
       DOCTOR_SERVICE_URL: http://doctor-service:3000
-    depends_on: [mongo, booking-service, patient-service, doctor-service]
+    depends_on: [booking-service, patient-service, doctor-service]
 
   notification-service:
     build:
@@ -127,8 +116,7 @@ services:
         SERVICE_PATH: backend/services/notification-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-notification
-    depends_on: [mongo]
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-notification?retryWrites=true&w=majority
 
   report-service:
     build:
@@ -138,13 +126,20 @@ services:
         SERVICE_PATH: backend/services/report-service
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongo:27017/labflow-report
+      MONGODB_URI: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/labflow-report?retryWrites=true&w=majority
       VERIFICATION_SERVICE_URL: http://verification-service:3000
       RESULT_SERVICE_URL: http://result-service:3000
       SAMPLE_SERVICE_URL: http://sample-service:3000
       PATIENT_SERVICE_URL: http://patient-service:3000
       DOCTOR_SERVICE_URL: http://doctor-service:3000
-    depends_on: [mongo, verification-service, result-service, sample-service, patient-service, doctor-service]
+    depends_on:
+      [
+        verification-service,
+        result-service,
+        sample-service,
+        patient-service,
+        doctor-service,
+      ]
 
   dashboard-service:
     build:
@@ -162,7 +157,17 @@ services:
       RESULT_SERVICE_URL: http://result-service:3000
       VERIFICATION_SERVICE_URL: http://verification-service:3000
       REPORT_SERVICE_URL: http://report-service:3000
-    depends_on: [patient-service, booking-service, test-service, billing-service, sample-service, result-service, verification-service, report-service]
+    depends_on:
+      [
+        patient-service,
+        booking-service,
+        test-service,
+        billing-service,
+        sample-service,
+        result-service,
+        verification-service,
+        report-service,
+      ]
 
   api-gateway:
     build:
@@ -186,7 +191,18 @@ services:
       DASHBOARD_SERVICE_URL: http://dashboard-service:3000
     ports:
       - "3000:3000"
-    depends_on: [auth-service, patient-service, test-service, booking-service, doctor-service, sample-service, result-service, verification-service, billing-service, notification-service, report-service, dashboard-service]
-
-volumes:
-  mongo-data:
+    depends_on:
+      [
+        auth-service,
+        patient-service,
+        test-service,
+        booking-service,
+        doctor-service,
+        sample-service,
+        result-service,
+        verification-service,
+        billing-service,
+        notification-service,
+        report-service,
+        dashboard-service,
+      ]

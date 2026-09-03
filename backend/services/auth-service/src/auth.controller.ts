@@ -1,10 +1,13 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   Inject,
+  InternalServerErrorException,
   Post,
   Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 
@@ -42,7 +45,15 @@ export class AuthController {
     description: 'User registered successfully',
   })
   async register(@Body() data: RegisterUserDto) {
-    return this.authLogic.register(data);
+    try {
+      return await this.authLogic.register(data);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Email already registered') {
+        throw new ConflictException(error.message);
+      }
+
+      throw new InternalServerErrorException();
+    }
   }
 
   // =========================
@@ -62,7 +73,19 @@ export class AuthController {
     description: 'Invalid email or password',
   })
   async login(@Body() data: LoginUserDto) {
-    return this.authLogic.login(data);
+    try {
+      return await this.authLogic.login(data);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === 'Invalid email or password' ||
+          error.message === 'User account is inactive')
+      ) {
+        throw new UnauthorizedException(error.message);
+      }
+
+      throw new InternalServerErrorException();
+    }
   }
 
   // =========================

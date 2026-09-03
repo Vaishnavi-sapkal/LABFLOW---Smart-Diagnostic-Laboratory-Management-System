@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model } from 'mongoose';
+import { FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { firstValueFrom } from 'rxjs';
 import { AdvanceStatusDto } from './dto/advance-status.dto';
 import { CreateSampleDto } from './dto/create-sample.dto';
@@ -28,7 +28,7 @@ export class SampleService {
     // is the final concurrency guard; a duplicate collision is retried once below.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.sampleModel.create({ ...dto, sampleId: await this.nextSampleId(), status: 'collected', statusUpdatedAt: new Date() });
+        return await this.sampleModel.create({ ...dto, sampleId: await this.nextSampleId(), collectedAt: new Date(), status: 'collected', statusUpdatedAt: new Date() });
       } catch (error: any) {
         if (error?.code === 11000 && attempt === 0) continue;
         if (error?.code === 11000) throw new ConflictException('Could not generate a unique sample ID');
@@ -50,7 +50,10 @@ export class SampleService {
   }
 
   async findOne(id: string) {
-    const sample = await this.sampleModel.findById(id).exec();
+    const filter: FilterQuery<SampleDocument> = isValidObjectId(id)
+      ? { $or: [{ _id: id }, { sampleId: id }] }
+      : { sampleId: id };
+    const sample = await this.sampleModel.findOne(filter).exec();
     if (!sample) throw new NotFoundException(`Sample ${id} was not found`);
     return sample;
   }
@@ -88,7 +91,7 @@ export class SampleService {
     const baseUrl = this.configService.get<string>('BOOKING_SERVICE_URL');
     if (!baseUrl) throw new ServiceUnavailableException('BOOKING_SERVICE_URL is not configured');
     try {
-      await firstValueFrom(this.httpService.get(`${baseUrl.replace(/\/$/, '')}/${bookingId}`));
+      await firstValueFrom(this.httpService.get(`${baseUrl.replace(/\/$/, '')}/bookings/${bookingId}`));
     } catch (error: any) {
       if (error?.response?.status === 404) throw new NotFoundException(`Booking ${bookingId} was not found`);
       throw new ServiceUnavailableException('Unable to validate booking with booking service');

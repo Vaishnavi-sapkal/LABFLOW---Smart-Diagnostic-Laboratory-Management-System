@@ -32,7 +32,7 @@ export class ReportService {
   ) {}
 
   async create(dto: CreateReportDto) {
-    const verification = await this.getRemote<VerificationSnapshot>('VERIFICATION_SERVICE_URL', dto.verificationId, 'Verification');
+    const verification = await this.getRemote<VerificationSnapshot>('VERIFICATION_SERVICE_URL', 'verifications', dto.verificationId, 'Verification');
     if (verification.status !== 'approved') throw new NotFoundException(`Approved verification ${dto.verificationId} was not found`);
     if (!verification.reviewedAt) throw new BadRequestException('Approved verification is missing reviewedAt');
 
@@ -40,10 +40,10 @@ export class ReportService {
     if (existing) return existing;
 
     const [result, sample, patient, doctor] = await Promise.all([
-      this.getRemote<ResultSnapshot>('RESULT_SERVICE_URL', verification.resultId, 'Result'),
-      this.getRemote<SampleSnapshot>('SAMPLE_SERVICE_URL', verification.sampleId, 'Sample'),
-      this.getRemote<PatientSnapshot>('PATIENT_SERVICE_URL', verification.patientId, 'Patient'),
-      this.getRemote<DoctorSnapshot>('DOCTOR_SERVICE_URL', verification.doctorId, 'Doctor'),
+      this.getRemote<ResultSnapshot>('RESULT_SERVICE_URL', 'results', verification.resultId, 'Result'),
+      this.getRemote<SampleSnapshot>('SAMPLE_SERVICE_URL', 'samples', verification.sampleId, 'Sample'),
+      this.getRemote<PatientSnapshot>('PATIENT_SERVICE_URL', 'patients', verification.patientId, 'Patient'),
+      this.getRemote<DoctorSnapshot>('DOCTOR_SERVICE_URL', 'doctors', verification.doctorId, 'Doctor'),
     ]);
 
     if (!sample.sampleType || !sample.collectedAt) throw new BadRequestException('Sample is missing sampleType or collectedAt');
@@ -105,9 +105,9 @@ export class ReportService {
     return { deleted: true, id };
   }
 
-  private async getRemote<T>(configKey: string, id: string, resource: string): Promise<T> {
+  private async getRemote<T>(configKey: string, resourcePath: string, id: string, resource: string): Promise<T> {
     const baseUrl = this.getBaseUrl(configKey);
-    try { return (await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${id}`))).data; }
+    try { return (await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${resourcePath}/${id}`))).data; }
     catch (error: any) {
       if (error?.response?.status === 404) throw new NotFoundException(`${resource} ${id} was not found`);
       throw new ServiceUnavailableException(`Unable to retrieve ${resource.toLowerCase()} from its service`);

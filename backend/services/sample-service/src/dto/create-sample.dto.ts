@@ -6,6 +6,7 @@ export class CreateSampleDto {
   @IsString() @IsNotEmpty() patientId!: string;
   @IsString() @IsNotEmpty() patientName!: string;
   @IsString() @IsNotEmpty() testDisplayName!: string;
+  @IsString() @IsNotEmpty() sampleType!: string;
   @IsString() @IsIn(SAMPLE_PRIORITIES) priority: (typeof SAMPLE_PRIORITIES)[number] = 'routine';
   @IsString() @IsNotEmpty() handledBy!: string;
 }

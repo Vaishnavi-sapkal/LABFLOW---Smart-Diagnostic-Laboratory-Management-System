@@ -53,7 +53,7 @@ export class ResultService {
 
     try {
       testResponse = await axios.get(
-        `${baseUrl}/${data.testId}`,
+        `${baseUrl.replace(/\/$/, '')}/tests/${data.testId}`,
       );
     } catch {
       throw new NotFoundException(

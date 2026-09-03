@@ -1,49 +1,138 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CreditCard, Printer } from 'lucide-react';
 import { useLabData } from '../app/LabDataContext';
 import { ReceiptPreview } from '../components/laboratory/ReceiptPreview';
 import { Button } from '../components/ui/Button';
 import { DataCell, DataTable } from '../components/ui/DataTable';
+import { Input, Select } from '../components/ui/Input';
 import { Tabs } from '../components/ui/Tabs';
 import { PageContainer } from '../components/layout/PageContainer';
-import { billingItems, formatInr, tests } from '../data/mockData';
+import { confirmPayment, createInvoice, listInvoices, updateDiscount, type Invoice, type PaymentMethod } from '../api/billing';
 
 const methods = ['Card', 'UPI', 'Cash', 'Insurance'] as const;
+const paymentMethodByTab: Record<(typeof methods)[number], PaymentMethod> = {
+  Card: 'card',
+  UPI: 'upi',
+  Cash: 'cash',
+  Insurance: 'insurance',
+};
+
+const formatInr = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
 
 export function Billing() {
+  const { bookings } = useLabData();
   const [method, setMethod] = useState<(typeof methods)[number]>('UPI');
-  const [paid, setPaid] = useState(false);
-  const { bookings, patients } = useLabData();
-  const activeBooking = bookings[0];
-  const activePatient = patients.find((patient) => patient.id === activeBooking?.patientId) ?? patients[0];
-  const bookingItems = activeBooking
-    ? activeBooking.testIds.map((testId) => {
-        const test = tests.find((item) => item.id === testId) ?? tests[0];
-        return { name: test.name, quantity: 1, price: test.price, discount: 0 };
-      })
-    : billingItems;
-  const subtotal = useMemo(() => bookingItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [bookingItems]);
-  const discount = useMemo(() => bookingItems.reduce((sum, item) => sum + item.discount, 0), [bookingItems]);
-  const tax = 0;
-  const total = subtotal - discount + tax;
+  const [selectedBookingId, setSelectedBookingId] = useState(bookings[0]?.id ?? '');
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState('0');
+  const [upiId, setUpiId] = useState('');
+  const [error, setError] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
+  const paid = invoice?.status === 'paid';
+
+  useEffect(() => {
+    if (!selectedBooking) {
+      setInvoice(null);
+      return;
+    }
+    const booking = selectedBooking;
+
+    let active = true;
+
+    async function loadInvoice() {
+      setLoadingInvoice(true);
+      setError('');
+      try {
+        const patientInvoices = await listInvoices({ patientId: booking.patientId });
+        const existingDraft = patientInvoices.find((item) => item.bookingId === booking.id && item.status === 'draft');
+        const nextInvoice = existingDraft ?? await createInvoice(booking.id);
+        if (!active) return;
+
+        setInvoice(nextInvoice);
+        setDiscountPercent(String(nextInvoice.discountPercent));
+        setUpiId(nextInvoice.upiId ?? '');
+      } catch (requestError) {
+        if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load invoice. Please try again.');
+      } finally {
+        if (active) setLoadingInvoice(false);
+      }
+    }
+
+    void loadInvoice();
+    return () => { active = false; };
+  }, [selectedBooking]);
+
+  const applyDiscount = async () => {
+    if (!invoice) return;
+    const value = Number(discountPercent);
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      setError('Discount must be between 0 and 100.');
+      return;
+    }
+
+    setProcessing(true);
+    setError('');
+    try {
+      const updatedInvoice = await updateDiscount(invoice._id, value);
+      setInvoice(updatedInvoice);
+      setDiscountPercent(String(updatedInvoice.discountPercent));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to update discount. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const collectPayment = async () => {
+    if (!invoice) return;
+    if (method === 'UPI' && !upiId.trim()) {
+      setError('Enter a UPI ID before collecting a UPI payment.');
+      return;
+    }
+
+    setProcessing(true);
+    setError('');
+    try {
+      const updatedInvoice = await confirmPayment(invoice._id, paymentMethodByTab[method], method === 'UPI' ? upiId.trim() : undefined);
+      setInvoice(updatedInvoice);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to collect payment. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   return (
     <PageContainer>
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section className="card p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Itemized bill</h2><Tabs items={[...methods]} onChange={setMethod} value={method} /></div>
-          <DataTable columns={['Test', 'Qty', 'Price', 'Discount', 'Amount']}>
-            {bookingItems.map((item) => <tr className="hover:bg-surface-muted" key={item.name}><DataCell>{item.name}</DataCell><DataCell>{item.quantity}</DataCell><DataCell>{formatInr(item.price)}</DataCell><DataCell>{formatInr(item.discount)}</DataCell><DataCell className="font-semibold">{formatInr(item.price * item.quantity - item.discount)}</DataCell></tr>)}
-          </DataTable>
-          <div className="ml-auto mt-5 grid max-w-sm gap-2 text-sm">
-            <div className="flex justify-between"><span className="text-ink-muted">Subtotal</span><span>{formatInr(subtotal)}</span></div>
-            <div className="flex justify-between"><span className="text-ink-muted">Discount</span><span>{formatInr(discount)}</span></div>
-            <div className="flex justify-between"><span className="text-ink-muted">Tax</span><span>{formatInr(tax)}</span></div>
-            <div className="flex justify-between border-t border-border pt-3 text-base font-semibold"><span>Total</span><span>{formatInr(total)}</span></div>
-          </div>
-          <div className="mt-5 flex justify-end gap-3"><Button icon={<Printer size={16} />} variant="outline">Print</Button><Button disabled={paid} icon={<CreditCard size={16} />} onClick={() => setPaid(true)}>{paid ? 'Payment Collected' : `Collect via ${method}`}</Button></div>
+          <label className="mb-5 grid max-w-md gap-1.5 text-xs font-medium text-ink-muted">Booking to bill
+            <Select onChange={(event) => setSelectedBookingId(event.target.value)} value={selectedBookingId}>
+              {bookings.map((booking) => <option key={booking.id} value={booking.id}>{booking.id} · {booking.slot}</option>)}
+            </Select>
+          </label>
+          {loadingInvoice ? <p className="py-10 text-center text-sm text-ink-muted">Loading invoice…</p> : invoice ? <>
+            <DataTable columns={['Test', 'Qty', 'Price', 'Discount', 'Amount']}>
+              {invoice.items.map((item) => <tr className="hover:bg-surface-muted" key={item.testId}><DataCell>{item.name}</DataCell><DataCell>{item.qty}</DataCell><DataCell>{formatInr(item.rate)}</DataCell><DataCell>{formatInr(item.rate * item.qty - item.amount)}</DataCell><DataCell className="font-semibold">{formatInr(item.amount)}</DataCell></tr>)}
+            </DataTable>
+            <div className="mt-5 flex max-w-sm items-end gap-2"><label className="grid flex-1 gap-1.5 text-xs font-medium text-ink-muted">Discount (%)<Input disabled={paid || processing} max="100" min="0" onChange={(event) => setDiscountPercent(event.target.value)} type="number" value={discountPercent} /></label><Button disabled={paid || processing} onClick={() => void applyDiscount()} size="sm" variant="outline">Apply</Button></div>
+            {method === 'UPI' && <label className="mt-4 grid max-w-sm gap-1.5 text-xs font-medium text-ink-muted">UPI ID<Input disabled={paid || processing} onChange={(event) => setUpiId(event.target.value)} placeholder="name@bank" value={upiId} /></label>}
+            <div className="ml-auto mt-5 grid max-w-sm gap-2 text-sm">
+              <div className="flex justify-between"><span className="text-ink-muted">Subtotal</span><span>{formatInr(invoice.subtotal)}</span></div>
+              <div className="flex justify-between"><span className="text-ink-muted">Discount</span><span>{formatInr(invoice.discountAmount)}</span></div>
+              <div className="flex justify-between"><span className="text-ink-muted">GST ({invoice.gstPercent}%)</span><span>{formatInr(invoice.gstAmount)}</span></div>
+              <div className="flex justify-between border-t border-border pt-3 text-base font-semibold"><span>Total</span><span>{formatInr(invoice.totalAmount)}</span></div>
+            </div>
+            {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+            <div className="mt-5 flex justify-end gap-3"><Button icon={<Printer size={16} />} variant="outline">Print</Button><Button disabled={paid || processing || (method === 'UPI' && !upiId.trim())} icon={<CreditCard size={16} />} onClick={() => void collectPayment()}>{paid ? 'Payment Collected' : `Collect via ${method}`}</Button></div>
+          </> : <p className="py-10 text-center text-sm text-ink-muted">Select a booking to create an invoice.</p>}
+          {!invoice && error && <p className="mt-4 text-sm text-danger">{error}</p>}
         </section>
-        <ReceiptPreview invoice="INV-2026-5518" items={bookingItems.map((item) => ({ name: item.name, price: formatInr(item.price * item.quantity - item.discount) }))} patient={activePatient.name} total={formatInr(total)} />
+        <ReceiptPreview invoice={invoice?.invoiceNo ?? 'Invoice pending'} items={(invoice?.items ?? []).map((item) => ({ name: item.name, price: formatInr(item.amount) }))} patient={invoice?.patientName ?? 'Select a booking'} total={formatInr(invoice?.totalAmount ?? 0)} />
       </div>
     </PageContainer>
   );

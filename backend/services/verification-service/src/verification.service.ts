@@ -138,15 +138,15 @@ export class VerificationService {
   }
 
   private async fetchResult(resultId: string): Promise<ResultSnapshot> {
-    return this.getRemote<ResultSnapshot>('RESULT_SERVICE_URL', resultId, 'Result');
+    return this.getRemote<ResultSnapshot>('RESULT_SERVICE_URL', 'results', resultId, 'Result');
   }
 
   private async fetchSample(sampleId: string): Promise<SampleSnapshot> {
-    return this.getRemote<SampleSnapshot>('SAMPLE_SERVICE_URL', sampleId, 'Sample');
+    return this.getRemote<SampleSnapshot>('SAMPLE_SERVICE_URL', 'samples', sampleId, 'Sample');
   }
 
   private async validateDoctor(doctorId: string): Promise<void> {
-    await this.getRemote('DOCTOR_SERVICE_URL', doctorId, 'Doctor');
+    await this.getRemote('DOCTOR_SERVICE_URL', 'doctors', doctorId, 'Doctor');
   }
 
   private async updateResultStatus(
@@ -157,7 +157,7 @@ export class VerificationService {
     const baseUrl = this.getBaseUrl('RESULT_SERVICE_URL');
     try {
       await firstValueFrom(
-        this.httpService.patch(`${baseUrl}/${resultId}/status`, { status, comment }),
+        this.httpService.patch(`${baseUrl}/results/${resultId}/status`, { status, comment }),
       );
     } catch (error: any) {
       if (error?.response?.status === 404) {
@@ -174,7 +174,7 @@ export class VerificationService {
     try {
       const baseUrl = this.getBaseUrl('REPORT_SERVICE_URL');
       await firstValueFrom(
-        this.httpService.post(`${baseUrl}/`, { verificationId }),
+        this.httpService.post(`${baseUrl}/reports`, { verificationId }),
       );
       return true;
     } catch (error: any) {
@@ -188,12 +188,13 @@ export class VerificationService {
 
   private async getRemote<T>(
     configKey: string,
+    resourcePath: string,
     id: string,
     resourceName: string,
   ): Promise<T> {
     const baseUrl = this.getBaseUrl(configKey);
     try {
-      const response = await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${id}`));
+      const response = await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${resourcePath}/${id}`));
       return response.data;
     } catch (error: any) {
       if (error?.response?.status === 404) {
