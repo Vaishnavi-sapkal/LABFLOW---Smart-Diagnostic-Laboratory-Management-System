@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { CheckCircle2, Save } from 'lucide-react';
-import { useLabData } from '../app/LabDataContext';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Field, FormSection } from '../components/ui/FormSection';
@@ -56,7 +55,6 @@ function displayGender(gender: string) {
 }
 
 export function PatientRegistration() {
-  const { addPatient } = useLabData();
   const [form, setForm] = useState(initialForm);
   const [registered, setRegistered] = useState(false);
   const [registeredPatient, setRegisteredPatient] = useState<CreatedPatient | null>(null);
@@ -78,15 +76,6 @@ export function PatientRegistration() {
       });
 
       setRegisteredPatient(patient);
-      addPatient({
-        id: patient.patientId,
-        name: patient.fullName,
-        age: getAge(patient.dateOfBirth),
-        gender: displayGender(patient.gender),
-        phone: patient.mobile,
-        city: patient.city ?? '',
-        bloodGroup: patient.bloodGroup ?? '',
-      });
       setRegistered(true);
     } catch (error) {
       setRegistrationError(error instanceof Error ? error.message : 'Unable to register patient. Please try again.');

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Check, Clock3, Plus, Search, UserRound, X } from 'lucide-react';
-import { useLabData } from '../app/LabDataContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageContainer } from '../components/layout/PageContainer';
-import { formatInr } from '../data/mockData';
+import { formatInr } from '../lib/currency';
 import { listDoctors, type DoctorDocument } from '../api/doctors';
 import { listTests, type TestDocument } from '../api/tests';
 import { BookingRequestError, createBooking, type CreatedBooking } from '../api/bookings';
@@ -43,7 +42,6 @@ function calculateAge(dateOfBirth: string): number {
 }
 
 export function TestBooking() {
-  const { addBooking } = useLabData();
   const [patients, setPatients] = useState<CreatedPatient[]>([]);
   const [testDocuments, setTestDocuments] = useState<TestDocument[]>([]);
   const [doctorDocuments, setDoctorDocuments] = useState<DoctorDocument[]>([]);
@@ -137,15 +135,6 @@ export function TestBooking() {
         scheduledSlot: selectedSlot,
       });
 
-      addBooking({
-        id: booking.bookingId,
-        patientId: booking.patientId,
-        testIds: booking.items.map((item) => item.testId),
-        doctorId: booking.doctorId,
-        status: booking.status,
-        slot: `${booking.scheduledDate.slice(0, 10)}, ${booking.scheduledSlot}`,
-        amount: booking.totalAmount,
-      });
       setCreatedBooking(booking);
     } catch (error) {
       if (error instanceof BookingRequestError && error.status === 409) {

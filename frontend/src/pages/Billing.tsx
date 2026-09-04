@@ -8,6 +8,7 @@ import { Tabs } from '../components/ui/Tabs';
 import { PageContainer } from '../components/layout/PageContainer';
 import { confirmPayment, createInvoice, listInvoices, updateDiscount, type Invoice, type PaymentMethod } from '../api/billing';
 import { listBookings, type CreatedBooking } from '../api/bookings';
+import { formatInr } from '../lib/currency';
 
 const methods = ['Card', 'UPI', 'Cash', 'Insurance'] as const;
 const paymentMethodByTab: Record<(typeof methods)[number], PaymentMethod> = {
@@ -16,8 +17,6 @@ const paymentMethodByTab: Record<(typeof methods)[number], PaymentMethod> = {
   Cash: 'cash',
   Insurance: 'insurance',
 };
-
-const formatInr = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
 
 export function Billing() {
   const [method, setMethod] = useState<(typeof methods)[number]>('UPI');
