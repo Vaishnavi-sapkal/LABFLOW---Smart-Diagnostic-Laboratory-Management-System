@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Banknote, Bell, ClipboardCheck, FileText, FlaskConical, Home, LayoutDashboard, Microscope, ReceiptText, TestTubeDiagonal, UserPlus } from 'lucide-react';
 import { cn } from '@labflow/utils/cn';
 import { useAuth } from '../../app/AuthContext';
-import { useLabData } from '../../app/LabDataContext';
+import { useUnreadNotificationsCount } from '../../hooks/useUnreadNotificationsCount';
 import type { Role } from '../../types/labflow';
 
 interface NavItem {
@@ -44,9 +44,8 @@ const roleBadgeClass: Record<Role, string> = {
 
 export function Sidebar({ expanded, mobileOpen, onCloseMobile }: { expanded: boolean; mobileOpen: boolean; onCloseMobile: () => void }) {
   const { role } = useAuth();
-  const { notifications } = useLabData();
   const visibleNav = navItems.filter((item) => item.roles.includes(role));
-  const unreadCount = notifications.filter((item) => item.unread).length;
+  const unreadCount = useUnreadNotificationsCount();
 
   return (
     <>

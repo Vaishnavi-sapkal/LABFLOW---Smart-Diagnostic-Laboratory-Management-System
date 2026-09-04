@@ -1,7 +1,7 @@
 import { Bell, ChevronDown, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/AuthContext';
-import { useLabData } from '../../app/LabDataContext';
+import { useUnreadNotificationsCount } from '../../hooks/useUnreadNotificationsCount';
 import { SearchBar } from '../ui/SearchBar';
 
 const roleLabels = {
@@ -22,9 +22,8 @@ const roleInitials = {
 
 export function Header({ onMobileMenu, onToggleSidebar }: { onMobileMenu: () => void; onToggleSidebar: () => void }) {
   const { role } = useAuth();
-  const { notifications } = useLabData();
   const navigate = useNavigate();
-  const unreadCount = notifications.filter((item) => item.unread).length;
+  const unreadCount = useUnreadNotificationsCount();
 
   return (
     <header className="z-10 flex h-[var(--size-header)] shrink-0 items-center gap-4 border-b border-border bg-white px-4 lg:px-6">
