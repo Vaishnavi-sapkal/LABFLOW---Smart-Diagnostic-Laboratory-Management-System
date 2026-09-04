@@ -18,6 +18,7 @@ export interface BookingItem {
 }
 
 export interface CreatedBooking {
+  _id?: string;
   bookingId: string;
   patientId: string;
   doctorId: string;

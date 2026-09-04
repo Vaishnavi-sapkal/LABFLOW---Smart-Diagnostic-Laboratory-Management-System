@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { CreditCard, Printer } from 'lucide-react';
-import { useLabData } from '../app/LabDataContext';
 import { ReceiptPreview } from '../components/laboratory/ReceiptPreview';
 import { Button } from '../components/ui/Button';
 import { DataCell, DataTable } from '../components/ui/DataTable';
@@ -8,6 +7,7 @@ import { Input, Select } from '../components/ui/Input';
 import { Tabs } from '../components/ui/Tabs';
 import { PageContainer } from '../components/layout/PageContainer';
 import { confirmPayment, createInvoice, listInvoices, updateDiscount, type Invoice, type PaymentMethod } from '../api/billing';
+import { listBookings, type CreatedBooking } from '../api/bookings';
 
 const methods = ['Card', 'UPI', 'Cash', 'Insurance'] as const;
 const paymentMethodByTab: Record<(typeof methods)[number], PaymentMethod> = {
@@ -20,9 +20,10 @@ const paymentMethodByTab: Record<(typeof methods)[number], PaymentMethod> = {
 const formatInr = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
 
 export function Billing() {
-  const { bookings } = useLabData();
   const [method, setMethod] = useState<(typeof methods)[number]>('UPI');
-  const [selectedBookingId, setSelectedBookingId] = useState(bookings[0]?.id ?? '');
+  const [bookings, setBookings] = useState<CreatedBooking[]>([]);
+  const [bookingsError, setBookingsError] = useState('');
+  const [selectedBookingId, setSelectedBookingId] = useState(bookings[0]?._id ?? '');
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loadingInvoice, setLoadingInvoice] = useState(false);
   const [discountPercent, setDiscountPercent] = useState('0');
@@ -30,8 +31,27 @@ export function Billing() {
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
+  const selectedBooking = bookings.find((booking) => booking._id === selectedBookingId);
   const paid = invoice?.status === 'paid';
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadBookings() {
+      try {
+        const loadedBookings = await listBookings();
+        if (!active) return;
+
+        setBookings(loadedBookings);
+        setSelectedBookingId((current) => current || loadedBookings[0]?._id || '');
+      } catch (requestError) {
+        if (active) setBookingsError(requestError instanceof Error ? requestError.message : 'Unable to load bookings. Please try again.');
+      }
+    }
+
+    void loadBookings();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!selectedBooking) {
@@ -47,8 +67,8 @@ export function Billing() {
       setError('');
       try {
         const patientInvoices = await listInvoices({ patientId: booking.patientId });
-        const existingDraft = patientInvoices.find((item) => item.bookingId === booking.id && item.status === 'draft');
-        const nextInvoice = existingDraft ?? await createInvoice(booking.id);
+        const existingDraft = patientInvoices.find((item) => item.bookingId === booking._id && item.status === 'draft');
+        const nextInvoice = existingDraft ?? await createInvoice(booking._id!);
         if (!active) return;
 
         setInvoice(nextInvoice);
@@ -110,9 +130,10 @@ export function Billing() {
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section className="card p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Itemized bill</h2><Tabs items={[...methods]} onChange={setMethod} value={method} /></div>
+          {bookingsError && <p className="mb-4 text-sm text-danger">{bookingsError}</p>}
           <label className="mb-5 grid max-w-md gap-1.5 text-xs font-medium text-ink-muted">Booking to bill
             <Select onChange={(event) => setSelectedBookingId(event.target.value)} value={selectedBookingId}>
-              {bookings.map((booking) => <option key={booking.id} value={booking.id}>{booking.id} · {booking.slot}</option>)}
+              {bookings.map((booking) => <option key={booking._id} value={booking._id}>{booking.bookingId} · {booking.scheduledDate.slice(0, 10)} {booking.scheduledSlot}</option>)}
             </Select>
           </label>
           {loadingInvoice ? <p className="py-10 text-center text-sm text-ink-muted">Loading invoice…</p> : invoice ? <>
