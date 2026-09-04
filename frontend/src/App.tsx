@@ -23,7 +23,7 @@ export default function App() {
         <Route element={<TestBooking />} path="/bookings/new" />
         <Route element={<Billing />} path="/billing" />
         <Route element={<SampleTracking />} path="/samples" />
-        <Route element={<ResultEntry />} path="/results/entry" />
+        <Route element={<ResultEntry />} path="/results/entry/:sampleId" />
         <Route element={<ResultVerification />} path="/results/verification" />
         <Route element={<FinalReportPreview />} path="/reports/preview" />
         <Route element={<PatientPortal />} path="/portal" />

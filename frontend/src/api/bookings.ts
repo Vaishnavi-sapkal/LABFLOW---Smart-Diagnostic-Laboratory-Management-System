@@ -66,3 +66,17 @@ export async function listBookings(filters?: { patientId?: string; doctorId?: st
     throw error;
   }
 }
+
+export async function getBooking(id: string): Promise<CreatedBooking> {
+  try {
+    const { data } = await client.get<CreatedBooking>(`/bookings/${id}`);
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to load booking details. Please try again.');
+    }
+
+    throw error;
+  }
+}
