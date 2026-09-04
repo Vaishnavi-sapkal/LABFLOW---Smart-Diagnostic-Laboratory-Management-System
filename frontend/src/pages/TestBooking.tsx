@@ -8,6 +8,7 @@ import { formatInr } from '../data/mockData';
 import { listDoctors, type DoctorDocument } from '../api/doctors';
 import { listTests, type TestDocument } from '../api/tests';
 import { BookingRequestError, createBooking, type CreatedBooking } from '../api/bookings';
+import { listPatients, type CreatedPatient } from '../api/patients';
 
 type CatalogTest = {
   id: string;
@@ -35,8 +36,15 @@ function todayIsoDate() {
   return localTime.toISOString().slice(0, 10);
 }
 
+function calculateAge(dateOfBirth: string): number {
+  const dob = new Date(dateOfBirth);
+  const diff = Date.now() - dob.getTime();
+  return Math.abs(new Date(diff).getUTCFullYear() - 1970);
+}
+
 export function TestBooking() {
-  const { addBooking, patients } = useLabData();
+  const { addBooking } = useLabData();
+  const [patients, setPatients] = useState<CreatedPatient[]>([]);
   const [testDocuments, setTestDocuments] = useState<TestDocument[]>([]);
   const [doctorDocuments, setDoctorDocuments] = useState<DoctorDocument[]>([]);
   const [dataError, setDataError] = useState('');
@@ -46,7 +54,7 @@ export function TestBooking() {
   const [selectedSlot, setSelectedSlot] = useState('09:00 AM');
   const [activeTab, setActiveTab] = useState<'tests' | 'packages'>('tests');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? '');
+  const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?._id ?? '');
   const [showPatientSelect, setShowPatientSelect] = useState(false);
   const [createdBooking, setCreatedBooking] = useState<CreatedBooking | null>(null);
   const [bookingError, setBookingError] = useState('');
@@ -57,12 +65,14 @@ export function TestBooking() {
 
     async function loadCatalog() {
       try {
-        const [tests, doctors] = await Promise.all([listTests(), listDoctors()]);
+        const [tests, doctors, loadedPatients] = await Promise.all([listTests(), listDoctors(), listPatients()]);
         if (!active) return;
 
         setTestDocuments(tests);
         setDoctorDocuments(doctors);
+        setPatients(loadedPatients);
         setSelectedDoctorId((current) => current || doctors.find((doctor) => doctor.isActive !== false)?._id || '');
+        setSelectedPatientId((current) => current || loadedPatients[0]?._id || '');
       } catch (error) {
         if (active) setDataError(error instanceof Error ? error.message : 'Unable to load booking data. Please try again.');
       }
@@ -98,7 +108,7 @@ export function TestBooking() {
     });
   const categories = ['All', ...new Set(catalogTests.map((test) => test.category))];
 
-  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
+  const selectedPatient = patients.find((patient) => patient._id === selectedPatientId) ?? patients[0];
   const cartItems = catalogTests.filter((test) => cart.includes(test.id));
   const filteredTests = catalogTests.filter((test) => {
     const matchesCategory = category === 'All' || test.category === category;
@@ -189,9 +199,9 @@ export function TestBooking() {
                   <UserRound size={17} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold text-ink">{selectedPatient?.name ?? 'Select patient'}</div>
+                  <div className="truncate text-sm font-bold text-ink">{selectedPatient?.fullName ?? 'Select patient'}</div>
                   <div className="truncate text-xs text-ink-muted">
-                    {selectedPatient ? `${selectedPatient.id} | ${selectedPatient.age}y ${selectedPatient.gender} | ${selectedPatient.bloodGroup}` : 'No patient selected'}
+                    {selectedPatient ? `${selectedPatient.patientId} | ${calculateAge(selectedPatient.dateOfBirth)}y ${selectedPatient.gender} | ${selectedPatient.bloodGroup ?? 'N/A'}` : 'No patient selected'}
                   </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setShowPatientSelect((value) => !value)}>Change Patient</Button>
@@ -202,7 +212,7 @@ export function TestBooking() {
                   onChange={(event) => setSelectedPatientId(event.target.value)}
                   value={selectedPatientId}
                 >
-                  {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name}</option>)}
+                  {patients.map((patient) => <option key={patient._id} value={patient._id}>{patient.fullName}</option>)}
                 </select>
               )}
             </div>
