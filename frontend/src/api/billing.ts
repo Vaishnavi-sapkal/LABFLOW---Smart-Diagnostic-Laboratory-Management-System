@@ -70,6 +70,15 @@ export async function confirmPayment(id: string, paymentMethod: PaymentMethod, u
   }
 }
 
+export async function cancelInvoice(id: string): Promise<Invoice> {
+  try {
+    const { data } = await client.patch<Invoice>(`/billing/${id}/cancel`);
+    return data;
+  } catch (error) {
+    return rethrowApiError(error, 'Unable to cancel invoice. Please try again.');
+  }
+}
+
 export async function listInvoices(filters?: { patientId?: string; status?: string }): Promise<Invoice[]> {
   try {
     const { data } = await client.get<Invoice[]>('/billing', { params: filters });

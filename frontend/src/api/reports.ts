@@ -35,6 +35,14 @@ export interface ReportDocument {
   verificationId: string;
 }
 
+export interface ReportVerification {
+  valid: boolean;
+  reportNo?: string;
+  patientName?: string;
+  testName?: string;
+  reportDate?: string;
+}
+
 function rethrowApiError(error: unknown, fallback: string): never {
   if (isAxiosError(error)) {
     const message = error.response?.data?.message;
@@ -68,5 +76,14 @@ export async function getReportByNo(reportNo: string): Promise<ReportDocument> {
     return data;
   } catch (error) {
     return rethrowApiError(error, 'Unable to load report. Please try again.');
+  }
+}
+
+export async function verifyReport(reportNo: string): Promise<ReportVerification> {
+  try {
+    const { data } = await client.get<ReportVerification>(`/reports/verify/${encodeURIComponent(reportNo)}`);
+    return data;
+  } catch (error) {
+    return rethrowApiError(error, 'Unable to verify this report. Please try again.');
   }
 }

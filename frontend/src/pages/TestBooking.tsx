@@ -5,8 +5,8 @@ import { Input } from '../components/ui/Input';
 import { PageContainer } from '../components/layout/PageContainer';
 import { formatInr } from '../lib/currency';
 import { listDoctors, type DoctorDocument } from '../api/doctors';
-import { listTests, type TestDocument } from '../api/tests';
-import { BookingRequestError, createBooking, type CreatedBooking } from '../api/bookings';
+import { getSavings, listTests, type TestDocument } from '../api/tests';
+import { BookingRequestError, createBooking, getAvailability, getPendingCounts, type CreatedBooking, type SlotAvailability } from '../api/bookings';
 import { listPatients, type CreatedPatient } from '../api/patients';
 
 type CatalogTest = {
@@ -26,9 +26,6 @@ type TestPackage = {
   savings: number;
 };
 
-const slots = ['08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM', '03:00 PM', '04:00 PM'];
-const unavailableSlots = new Set(['08:00 AM', '08:30 AM', '10:30 AM']);
-
 function todayIsoDate() {
   const today = new Date();
   const localTime = new Date(today.getTime() - (today.getTimezoneOffset() * 60_000));
@@ -45,6 +42,9 @@ export function TestBooking() {
   const [patients, setPatients] = useState<CreatedPatient[]>([]);
   const [testDocuments, setTestDocuments] = useState<TestDocument[]>([]);
   const [doctorDocuments, setDoctorDocuments] = useState<DoctorDocument[]>([]);
+  const [packageSavings, setPackageSavings] = useState<Record<string, number>>({});
+  const [slotAvailability, setSlotAvailability] = useState<SlotAvailability[]>([]);
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   const [dataError, setDataError] = useState('');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<string[]>([]);
@@ -80,6 +80,62 @@ export function TestBooking() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const packageIds = testDocuments.filter((test) => test.isPackage).map((test) => test._id);
+
+    const loadPackageSavings = async () => {
+      try {
+        const savings = await Promise.all(packageIds.map(async (id) => [id, (await getSavings(id)).savings] as const));
+        if (active) setPackageSavings(Object.fromEntries(savings));
+      } catch {
+        if (active) setPackageSavings({});
+      }
+    };
+
+    void loadPackageSavings();
+    return () => { active = false; };
+  }, [testDocuments]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPendingCounts = async () => {
+      try {
+        const counts = await getPendingCounts();
+        if (active) setPendingCounts(Object.fromEntries(counts.map(({ doctorId, pendingCount }) => [doctorId, pendingCount])));
+      } catch {
+        if (active) setPendingCounts({});
+      }
+    };
+
+    void loadPendingCounts();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDoctorId) {
+      setSlotAvailability([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadAvailability = async () => {
+      try {
+        const availability = await getAvailability(scheduledDate, selectedDoctorId);
+        if (!active) return;
+        setSlotAvailability(availability);
+        setSelectedSlot((current) => availability.find((item) => item.slot === current && item.available)?.slot ?? availability.find((item) => item.available)?.slot ?? '');
+      } catch {
+        if (active) setSlotAvailability([]);
+      }
+    };
+
+    void loadAvailability();
+    return () => { active = false; };
+  }, [scheduledDate, selectedDoctorId]);
+
   const catalogTests: CatalogTest[] = testDocuments
     .filter((test) => !test.isPackage)
     .map((test) => ({
@@ -90,18 +146,16 @@ export function TestBooking() {
       duration: `${test.turnaroundHours}h`,
       fasting: Boolean(test.fastingRequired),
     }));
-  const priceByTestId = new Map(catalogTests.map((test) => [test.id, test.price]));
   const packages: TestPackage[] = testDocuments
     .filter((test) => test.isPackage)
     .map((test) => {
       const tests = test.includedTestIds ?? [];
-      const individualTotal = tests.reduce((total, testId) => total + (priceByTestId.get(testId) ?? 0), 0);
       return {
         id: test._id,
         name: test.name,
         tests,
         price: test.price,
-        savings: Math.max(0, individualTotal - test.price),
+        savings: packageSavings[test._id] ?? 0,
       };
     });
   const categories = ['All', ...new Set(catalogTests.map((test) => test.category))];
@@ -275,8 +329,8 @@ export function TestBooking() {
 
           <aside className="grid h-fit gap-4 xl:sticky xl:top-24">
             <CartPanel cartItems={cartItems} onRemove={toggleCart} total={catalogTotal} />
-            <DoctorPanel doctors={doctorDocuments.filter((doctor) => doctor.isActive !== false)} selectedDoctorId={selectedDoctorId} onSelect={setSelectedDoctorId} />
-            <SlotPanel scheduledDate={scheduledDate} onDateChange={setScheduledDate} selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
+            <DoctorPanel doctors={doctorDocuments.filter((doctor) => doctor.isActive !== false)} pendingCounts={pendingCounts} selectedDoctorId={selectedDoctorId} onSelect={setSelectedDoctorId} />
+            <SlotPanel availability={slotAvailability} scheduledDate={scheduledDate} onDateChange={setScheduledDate} selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
             <Button className="h-[46px] w-full rounded-card text-[15px] font-bold" disabled={!cart.length} onClick={handleConfirm}>
               Confirm Booking - {formatInr(catalogTotal)}
             </Button>
@@ -350,7 +404,7 @@ function CartPanel({ cartItems, onRemove, total }: { cartItems: CatalogTest[]; o
   );
 }
 
-function DoctorPanel({ doctors, selectedDoctorId, onSelect }: { doctors: DoctorDocument[]; selectedDoctorId: string; onSelect: (id: string) => void }) {
+function DoctorPanel({ doctors, pendingCounts, selectedDoctorId, onSelect }: { doctors: DoctorDocument[]; pendingCounts: Record<string, number>; selectedDoctorId: string; onSelect: (id: string) => void }) {
   return (
     <section className="rounded-card border border-border bg-white p-5">
       <h2 className="mb-3 text-sm font-bold text-ink">Assign Doctor</h2>
@@ -368,7 +422,7 @@ function DoctorPanel({ doctors, selectedDoctorId, onSelect }: { doctors: DoctorD
                 {doctor.fullName.replace('Dr. ', '').charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-semibold text-ink">{doctor.fullName}</div>
+                <div className="flex items-center gap-2"><span className="truncate text-[13px] font-semibold text-ink">{doctor.fullName}</span><span className="rounded bg-muted px-1.5 py-px text-[10px] font-semibold text-ink-muted">{pendingCounts[doctor._id] ?? 0} pending</span></div>
                 <div className="text-[11px] text-ink-muted">{doctor.specialization ?? 'Doctor'}</div>
               </div>
               {selected && <Check className="shrink-0 text-brand-600" size={15} strokeWidth={3} />}
@@ -380,19 +434,18 @@ function DoctorPanel({ doctors, selectedDoctorId, onSelect }: { doctors: DoctorD
   );
 }
 
-function SlotPanel({ scheduledDate, onDateChange, selectedSlot, onSelect }: { scheduledDate: string; onDateChange: (date: string) => void; selectedSlot: string; onSelect: (slot: string) => void }) {
+function SlotPanel({ availability, scheduledDate, onDateChange, selectedSlot, onSelect }: { availability: SlotAvailability[]; scheduledDate: string; onDateChange: (date: string) => void; selectedSlot: string; onSelect: (slot: string) => void }) {
   return (
     <section className="rounded-card border border-border bg-white p-5">
       <h2 className="mb-1 text-sm font-bold text-ink">Schedule Slot</h2>
       <Input className="mb-3 h-9" min={todayIsoDate()} onChange={(event) => onDateChange(event.target.value)} type="date" value={scheduledDate} />
       <div className="grid grid-cols-3 gap-1.5">
-        {slots.map((slot) => {
-          const unavailable = unavailableSlots.has(slot);
+        {availability.map(({ slot, available }) => {
           const selected = selectedSlot === slot;
           return (
             <button
-              className={`rounded-md border py-1.5 font-mono text-[11.5px] font-semibold transition ${selected ? 'border-brand-600 bg-brand-600 text-white' : unavailable ? 'cursor-not-allowed border-border bg-muted text-ink-muted line-through' : 'border-border bg-white text-ink hover:bg-brand-50'}`}
-              disabled={unavailable}
+              className={`rounded-md border py-1.5 font-mono text-[11.5px] font-semibold transition ${selected ? 'border-brand-600 bg-brand-600 text-white' : !available ? 'cursor-not-allowed border-border bg-muted text-ink-muted line-through' : 'border-border bg-white text-ink hover:bg-brand-50'}`}
+              disabled={!available}
               key={slot}
               onClick={() => onSelect(slot)}
               type="button"

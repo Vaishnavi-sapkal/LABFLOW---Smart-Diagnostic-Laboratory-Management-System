@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { Banknote, Bell, ClipboardCheck, FileText, FlaskConical, Home, LayoutDashboard, Microscope, ReceiptText, TestTubeDiagonal, UserPlus } from 'lucide-react';
+import { Banknote, Bell, ClipboardCheck, FileText, FlaskConical, Home, LayoutDashboard, Microscope, ReceiptText, Stethoscope, TestTubeDiagonal, UserPlus } from 'lucide-react';
 import { cn } from '@labflow/utils/cn';
 import { useAuth } from '../../app/AuthContext';
 import { useUnreadNotificationsCount } from '../../hooks/useUnreadNotificationsCount';
@@ -16,6 +16,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Doctor', 'Receptionist', 'Lab Technician'] },
   { label: 'Patients', path: '/patients/register', icon: UserPlus, roles: ['Admin', 'Receptionist'] },
+  { label: 'Doctors', path: '/doctors', icon: Stethoscope, roles: ['Admin'] },
+  { label: 'Manage Tests', path: '/tests/manage', icon: FlaskConical, roles: ['Admin'] },
   { label: 'Test Booking', path: '/bookings/new', icon: ClipboardCheck, roles: ['Admin', 'Receptionist', 'Patient'] },
   { label: 'Billing', path: '/billing', icon: Banknote, roles: ['Admin', 'Receptionist'] },
   { label: 'Sample Tracking', path: '/samples', icon: FlaskConical, roles: ['Admin', 'Lab Technician'] },

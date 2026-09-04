@@ -30,6 +30,16 @@ export interface CreatedBooking {
   notes?: string;
 }
 
+export interface SlotAvailability {
+  slot: string;
+  available: boolean;
+}
+
+export interface DoctorPendingCount {
+  doctorId: string;
+  pendingCount: number;
+}
+
 export class BookingRequestError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
@@ -76,6 +86,34 @@ export async function getBooking(id: string): Promise<CreatedBooking> {
     if (isAxiosError(error)) {
       const message = error.response?.data?.message;
       throw new Error(typeof message === 'string' ? message : 'Unable to load booking details. Please try again.');
+    }
+
+    throw error;
+  }
+}
+
+export async function getAvailability(date: string, doctorId: string): Promise<SlotAvailability[]> {
+  try {
+    const { data } = await client.get<SlotAvailability[]>('/bookings/availability', { params: { date, doctorId } });
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to load slot availability. Please try again.');
+    }
+
+    throw error;
+  }
+}
+
+export async function getPendingCounts(): Promise<DoctorPendingCount[]> {
+  try {
+    const { data } = await client.get<DoctorPendingCount[]>('/bookings/doctors/pending-counts');
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to load doctor pending counts. Please try again.');
     }
 
     throw error;

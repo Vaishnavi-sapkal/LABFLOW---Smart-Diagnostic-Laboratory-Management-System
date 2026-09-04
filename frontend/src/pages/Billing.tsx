@@ -6,7 +6,7 @@ import { DataCell, DataTable } from '../components/ui/DataTable';
 import { Input, Select } from '../components/ui/Input';
 import { Tabs } from '../components/ui/Tabs';
 import { PageContainer } from '../components/layout/PageContainer';
-import { confirmPayment, createInvoice, listInvoices, updateDiscount, type Invoice, type PaymentMethod } from '../api/billing';
+import { cancelInvoice, confirmPayment, createInvoice, listInvoices, updateDiscount, type Invoice, type PaymentMethod } from '../api/billing';
 import { listBookings, type CreatedBooking } from '../api/bookings';
 import { formatInr } from '../lib/currency';
 
@@ -124,6 +124,20 @@ export function Billing() {
     }
   };
 
+  const handleCancelInvoice = async () => {
+    if (!invoice || !window.confirm(`Cancel invoice ${invoice.invoiceNo}?`)) return;
+
+    setProcessing(true);
+    setError('');
+    try {
+      setInvoice(await cancelInvoice(invoice._id));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to cancel invoice. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <PageContainer>
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -148,7 +162,7 @@ export function Billing() {
               <div className="flex justify-between border-t border-border pt-3 text-base font-semibold"><span>Total</span><span>{formatInr(invoice.totalAmount)}</span></div>
             </div>
             {error && <p className="mt-4 text-sm text-danger">{error}</p>}
-            <div className="mt-5 flex justify-end gap-3"><Button icon={<Printer size={16} />} variant="outline">Print</Button><Button disabled={paid || processing || (method === 'UPI' && !upiId.trim())} icon={<CreditCard size={16} />} onClick={() => void collectPayment()}>{paid ? 'Payment Collected' : `Collect via ${method}`}</Button></div>
+            <div className="mt-5 flex justify-end gap-3"><Button icon={<Printer size={16} />} variant="outline">Print</Button>{invoice.status !== 'paid' && invoice.status !== 'cancelled' && <Button disabled={processing} onClick={() => void handleCancelInvoice()} variant="danger-outline">Cancel invoice</Button>}<Button disabled={paid || processing || (method === 'UPI' && !upiId.trim())} icon={<CreditCard size={16} />} onClick={() => void collectPayment()}>{paid ? 'Payment Collected' : `Collect via ${method}`}</Button></div>
           </> : <p className="py-10 text-center text-sm text-ink-muted">Select a booking to create an invoice.</p>}
           {!invoice && error && <p className="mt-4 text-sm text-danger">{error}</p>}
         </section>
