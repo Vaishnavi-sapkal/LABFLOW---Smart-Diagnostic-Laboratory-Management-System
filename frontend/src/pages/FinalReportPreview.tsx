@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { Download, Printer } from 'lucide-react';
 import { ReportPreview } from '../components/laboratory/ReportPreview';
 import { Button } from '../components/ui/Button';
@@ -12,6 +14,7 @@ function formatDate(value: string) {
 }
 
 export function FinalReportPreview() {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [reports, setReports] = useState<ReportDocument[]>([]);
   const [selectedReportId, setSelectedReportId] = useState('');
   const [report, setReport] = useState<ReportDocument | null>(null);
@@ -82,18 +85,35 @@ export function FinalReportPreview() {
     flag: value.flag,
   }));
 
+  const handleDownload = async () => {
+    if (!reportRef.current || !report) return;
+
+    const canvas = await html2canvas(reportRef.current, { scale: 2 });
+    const imageData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imageHeight = (canvas.height * pageWidth) / canvas.width;
+    const imageWidth = imageHeight > pageHeight ? (canvas.width * pageHeight) / canvas.height : pageWidth;
+    const fittedImageHeight = imageHeight > pageHeight ? pageHeight : imageHeight;
+    const x = (pageWidth - imageWidth) / 2;
+
+    pdf.addImage(imageData, 'PNG', x, 0, imageWidth, fittedImageHeight);
+    pdf.save(`${report.reportNo}.pdf`);
+  };
+
   return (
     <PageContainer>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">Printable diagnostic report for patient handoff.</p>
-        <div className="flex gap-3"><Button icon={<Printer size={16} />} variant="outline">Print</Button><Button icon={<Download size={16} />}>Download</Button></div>
+        <div className="flex gap-3"><Button icon={<Printer size={16} />} onClick={() => window.print()} variant="outline">Print</Button><Button disabled={!report} icon={<Download size={16} />} onClick={() => void handleDownload()}>Download</Button></div>
       </div>
       {reports.length > 0 && <label className="mb-5 grid max-w-md gap-1.5 text-xs font-medium text-ink-muted">Report
         <Select onChange={(event) => setSelectedReportId(event.target.value)} value={selectedReportId}>
           {reports.map((item) => <option key={item._id} value={item._id}>{item.reportNo} · {item.patientName}</option>)}
         </Select>
       </label>}
-      {loading ? <div className="card p-10 text-center text-sm text-ink-muted">Loading report…</div> : error ? <div className="card p-10 text-center text-sm text-danger">{error}</div> : report ? <>
+      {loading ? <div className="card p-10 text-center text-sm text-ink-muted">Loading report…</div> : error ? <div className="card p-10 text-center text-sm text-danger">{error}</div> : report ? <div ref={reportRef}>
         <ReportPreview doctor={report.doctorName} patient={`${report.patientName}${report.patientAge !== undefined ? ` | ${report.patientAge} yrs` : ''}${report.patientGender ? ` | ${report.patientGender}` : ''}`} reportDate={formatDate(report.reportDate)} reportId={report.reportNo} sampleId={report.sampleId} tests={tests} />
         <section className="mt-6 card p-5">
           <h2 className="text-base font-semibold">Clinical Remarks</h2>
@@ -103,7 +123,7 @@ export function FinalReportPreview() {
             <div className="rounded-ui border border-border p-4"><p className="text-xs text-ink-muted">Verified By Doctor</p><p className="mt-6 font-semibold">{report.doctorName}</p></div>
           </div>
         </section>
-      </> : <div className="card p-10 text-center text-sm text-ink-muted">No reports are available yet.</div>}
+      </div> : <div className="card p-10 text-center text-sm text-ink-muted">No reports are available yet.</div>}
     </PageContainer>
   );
 }
