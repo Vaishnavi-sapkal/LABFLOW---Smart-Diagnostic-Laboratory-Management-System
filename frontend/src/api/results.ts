@@ -1,5 +1,5 @@
-import { isAxiosError } from 'axios';
-import client from './client';
+import { isAxiosError } from "axios";
+import client from "./client";
 
 export interface ResultValue {
   parameterName: string;
@@ -7,7 +7,7 @@ export interface ResultValue {
   unit: string;
   referenceMin: number;
   referenceMax: number;
-  flag: 'pending' | 'normal' | 'low' | 'high';
+  flag: "pending" | "normal" | "low" | "high";
 }
 
 export interface CreateResultDto {
@@ -39,7 +39,7 @@ export interface ResultDocument {
   doctorId?: string;
   values: ResultValue[];
   remarks?: string;
-  status: 'draft' | 'submitted' | 'verified' | 'rejected';
+  status: "draft" | "submitted" | "verified" | "rejected";
   enteredBy?: string;
   submittedAt?: string;
   abnormalValues?: ResultValue[];
@@ -48,18 +48,22 @@ export interface ResultDocument {
 function messageFrom(error: unknown, fallback: string): never {
   if (isAxiosError(error)) {
     const message = error.response?.data?.message;
-    throw new Error(typeof message === 'string' ? message : fallback);
+    throw new Error(typeof message === "string" ? message : fallback);
   }
 
   throw error;
 }
 
-export async function listResults(filters?: { status?: string }): Promise<ResultDocument[]> {
+export async function listResults(filters?: {
+  status?: string;
+}): Promise<ResultDocument[]> {
   try {
-    const { data } = await client.get<ResultDocument[]>('/results', { params: filters });
+    const { data } = await client.get<ResultDocument[]>("/results", {
+      params: filters,
+    });
     return data;
   } catch (error) {
-    return messageFrom(error, 'Unable to load results. Please try again.');
+    return messageFrom(error, "Unable to load results. Please try again.");
   }
 }
 
@@ -68,34 +72,57 @@ export async function getResult(id: string): Promise<ResultDocument> {
     const { data } = await client.get<ResultDocument>(`/results/${id}`);
     return data;
   } catch (error) {
-    return messageFrom(error, 'Unable to load result details. Please try again.');
+    return messageFrom(
+      error,
+      "Unable to load result details. Please try again.",
+    );
   }
 }
 
-export async function createResult(payload: CreateResultDto): Promise<ResultDocument> {
+export async function createResult(
+  payload: CreateResultDto,
+): Promise<ResultDocument> {
   try {
-    const { data } = await client.post<ResultDocument>('/results', payload);
+    const { data } = await client.post<ResultDocument>("/results", payload);
     return data;
   } catch (error) {
-    return messageFrom(error, 'Unable to create result. Please try again.');
+    return messageFrom(error, "Unable to create result. Please try again.");
   }
 }
 
-export async function updateValues(id: string, payload: UpdateValuesDto): Promise<ResultDocument> {
+export async function updateValues(
+  id: string,
+  payload: UpdateValuesDto,
+): Promise<ResultDocument> {
   try {
-    const { data } = await client.patch<ResultDocument>(`/results/${id}/values`, payload);
+    const { data } = await client.patch<ResultDocument>(
+      `/results/${id}/values`,
+      payload,
+    );
     return data;
   } catch (error) {
-    return messageFrom(error, 'Unable to update result values. Please try again.');
+    return messageFrom(
+      error,
+      "Unable to update result values. Please try again.",
+    );
   }
 }
 
-export async function updateRemarks(id: string, payload: UpdateRemarksDto): Promise<ResultDocument> {
+export async function updateRemarks(
+  id: string,
+  payload: UpdateRemarksDto,
+): Promise<ResultDocument> {
   try {
-    const { data } = await client.patch<ResultDocument>(`/results/${id}/remarks`, payload);
+    const { data } = await client.patch<ResultDocument>(
+      `/results/${id}/remarks`,
+      payload,
+    );
     return data;
   } catch (error) {
-    return messageFrom(error, 'Unable to update result remarks. Please try again.');
+    return messageFrom(
+      error,
+      "Unable to update result remarks. Please try again.",
+    );
   }
 }
 
@@ -104,6 +131,6 @@ export async function submitResult(id: string): Promise<ResultDocument> {
     const { data } = await client.post<ResultDocument>(`/results/${id}/submit`);
     return data;
   } catch (error) {
-    return messageFrom(error, 'Unable to submit result. Please try again.');
+    return messageFrom(error, "Unable to submit result. Please try again.");
   }
 }

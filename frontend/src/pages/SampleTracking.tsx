@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { KanbanColumn } from '../components/laboratory/KanbanColumn';
 import { SampleCard } from '../components/laboratory/SampleCard';
 import { useAuth } from '../app/AuthContext';
@@ -158,6 +159,7 @@ export function SampleTracking() {
                               <button className="h-8 rounded-ui border border-danger/30 bg-white text-xs font-semibold text-danger hover:bg-danger-light disabled:cursor-not-allowed disabled:opacity-60" disabled={updatingId === sample._id} onClick={() => void handleReject(sample)} type="button">Reject</button>
                             </div>
                           )}
+                          {sample.status === 'processing' && <Link className="flex h-8 items-center justify-center rounded-ui border border-brand-600 bg-brand-600 text-xs font-semibold text-white hover:bg-brand-700" to={`/results/entry/${sample._id}`}>Enter results</Link>}
                           {sample.rejectionReason && <p className="text-xs text-danger">Reason: {sample.rejectionReason}</p>}
                           {actionFailed && <p className="text-xs text-danger">{actionError.message}</p>}
                         </div>

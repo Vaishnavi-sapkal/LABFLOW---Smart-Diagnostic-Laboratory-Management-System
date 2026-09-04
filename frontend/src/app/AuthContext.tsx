@@ -1,12 +1,12 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { login as authenticate, type AuthenticatedUser } from '../api/auth';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { clearStoredSession, getCurrentUser, login as authenticate, type AuthenticatedUser } from '../api/auth';
 import type { Role } from '../types/labflow';
 
 const roleLanding: Record<Role, string> = {
   Admin: '/dashboard',
   Doctor: '/results/verification',
   Receptionist: '/patients/register',
-  'Lab Technician': '/results/entry',
+  'Lab Technician': '/samples',
   Patient: '/portal',
 };
 
@@ -23,6 +23,28 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('Admin');
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
+
+  useEffect(() => {
+    if (!localStorage.getItem('labflow_token')) return;
+
+    let active = true;
+
+    const restoreSession = async () => {
+      try {
+        const authenticatedUser = await getCurrentUser();
+        if (!active) return;
+
+        setRole(toRole(authenticatedUser.role));
+        setUser(authenticatedUser);
+      } catch {
+        clearStoredSession();
+        if (active) setUser(null);
+      }
+    };
+
+    void restoreSession();
+    return () => { active = false; };
+  }, []);
 
   const login = async (email: string, password: string) => {
     const response = await authenticate(email, password);
