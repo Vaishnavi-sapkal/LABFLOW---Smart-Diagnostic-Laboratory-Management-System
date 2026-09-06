@@ -1,11 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateTestDto } from './dto/create-test.dto';
 import { UpdateTestDto } from './dto/update-test.dto';
 import { TestService } from './test.service';
+import { Roles, RolesGuard } from './auth';
+import { InternalService, InternalServiceGuard } from './internal-service.guard';
 
 @ApiTags('Tests')
 @Controller('tests')
+@UseGuards(InternalServiceGuard, RolesGuard)
+@Roles('admin')
 export class TestController {
   constructor(private readonly testService: TestService) {}
 
@@ -16,6 +20,8 @@ export class TestController {
   }
 
   @Get()
+  @InternalService()
+  @Roles('admin', 'receptionist')
   @ApiOperation({ summary: 'List tests and packages, optionally filtered by category, package status, name, or code' })
   findAll(
     @Query('category') category?: string,
@@ -26,12 +32,15 @@ export class TestController {
   }
 
   @Get(':id/savings')
+  @Roles('admin', 'receptionist')
   @ApiOperation({ summary: 'Calculate the savings for a test package' })
   getSavings(@Param('id') id: string) {
     return this.testService.getSavings(id);
   }
 
   @Get(':id')
+  @InternalService()
+  @Roles('admin', 'receptionist')
   @ApiOperation({ summary: 'Get a laboratory test or package by ID' })
   findOne(@Param('id') id: string) {
     return this.testService.findOne(id);

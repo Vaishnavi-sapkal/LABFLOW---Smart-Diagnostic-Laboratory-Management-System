@@ -6,10 +6,11 @@ import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { PageContainer } from '../components/layout/PageContainer';
 import { useAuth } from '../app/AuthContext';
-import { getDoctor } from '../api/doctors';
-import { listBookings, type CreatedBooking } from '../api/bookings';
-import { listPatients, type CreatedPatient } from '../api/patients';
-import { listReports, type ReportDocument } from '../api/reports';
+import type { CreatedBooking } from '../api/bookings';
+import type { CreatedPatient } from '../api/patients';
+import { getMyPatientPortal } from '../api/patients';
+import type { ReportDocument } from '../api/reports';
+import type { Invoice } from '../api/billing';
 
 const formatInr = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -20,6 +21,7 @@ export function PatientPortal() {
   const [patient, setPatient] = useState<CreatedPatient | null>(null);
   const [bookings, setBookings] = useState<CreatedBooking[]>([]);
   const [reports, setReports] = useState<ReportDocument[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [upcomingDoctor, setUpcomingDoctor] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,37 +33,10 @@ export function PatientPortal() {
       setLoading(true);
       setError('');
       try {
-        const patientProfiles = await listPatients();
-        const resolvedPatient = user?.id ? patientProfiles.find((item) => item.userId === user.id) : undefined;
-        if (!active) return;
-
-        if (!resolvedPatient?._id) {
-          setPatient(null);
-          return;
-        }
-
-        setPatient(resolvedPatient);
-        const [patientBookings, patientReports] = await Promise.all([
-          listBookings({ patientId: resolvedPatient._id }),
-          listReports({ patientId: resolvedPatient._id }),
-        ]);
-        if (!active) return;
-
-        setBookings(patientBookings);
-        setReports(patientReports);
-        const nextBooking = patientBookings
-          .filter((booking) => (booking.status === 'pending' || booking.status === 'confirmed') && booking.scheduledDate.slice(0, 10) >= today())
-          .sort((left, right) => new Date(`${left.scheduledDate.slice(0, 10)} ${left.scheduledSlot}`).getTime() - new Date(`${right.scheduledDate.slice(0, 10)} ${right.scheduledSlot}`).getTime())[0];
-        if (nextBooking) {
-          try {
-            const doctor = await getDoctor(nextBooking.doctorId);
-            if (active) setUpcomingDoctor(doctor.fullName);
-          } catch {
-            if (active) setUpcomingDoctor('');
-          }
-        }
+        const portal = await getMyPatientPortal();
+        if (active) { setPatient(portal.patient); setBookings(portal.bookings); setReports(portal.reports); setInvoices(portal.invoices); setUpcomingDoctor(portal.bookings[0]?.doctorId ?? ''); }
       } catch (requestError) {
-        if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load patient portal. Please try again.');
+        if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load your patient profile.');
       } finally {
         if (active) setLoading(false);
       }
@@ -75,7 +50,7 @@ export function PatientPortal() {
     .filter((booking) => (booking.status === 'pending' || booking.status === 'confirmed') && booking.scheduledDate.slice(0, 10) >= today())
     .sort((left, right) => left.scheduledDate.localeCompare(right.scheduledDate));
   const nextBooking = upcomingBookings[0];
-  const totalSpend = bookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
+  const totalSpend = invoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.totalAmount, 0);
 
   if (loading) return <PageContainer><div className="card p-10 text-center text-sm text-ink-muted">Loading patient portal…</div></PageContainer>;
   if (error) return <PageContainer><div className="card p-10 text-center text-sm text-danger">{error}</div></PageContainer>;
@@ -97,7 +72,7 @@ export function PatientPortal() {
           <section className="card p-5">
             <h2 className="mb-4 text-base font-semibold">Reports</h2>
             {reports.length ? <DataTable columns={['Report', 'Test', 'Date', 'Status', 'Download']}>
-              {reports.map((report) => <tr className="hover:bg-surface-muted" key={report._id}><DataCell className="font-semibold">{report.reportNo}</DataCell><DataCell>{report.testName}</DataCell><DataCell>{toDate(report.reportDate)}</DataCell><DataCell><StatusBadge tone="success">Verified</StatusBadge></DataCell><DataCell><Button onClick={() => window.open(`/reports/${report._id}`, '_blank')} size="sm" variant="outline"><Download size={14} /> View</Button></DataCell></tr>)}
+              {reports.map((report) => <tr className="hover:bg-surface-muted" key={report._id}><DataCell className="font-semibold">{report.reportNo}</DataCell><DataCell>{report.testName}</DataCell><DataCell>{toDate(report.reportDate)}</DataCell><DataCell><StatusBadge tone="success">Verified</StatusBadge></DataCell><DataCell><Button onClick={() => window.open(`/verify?reportNo=${encodeURIComponent(report.reportNo)}`, '_blank')} size="sm" variant="outline"><Download size={14} /> View</Button></DataCell></tr>)}
             </DataTable> : <p className="py-6 text-center text-sm text-ink-muted">No verified reports are available yet.</p>}
           </section>
         </section>

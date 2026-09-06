@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { JwtStrategy } from './auth';
+import { InternalServiceGuard } from './internal-service.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
@@ -33,6 +35,6 @@ import { Result, ResultSchema } from './result.schema';
   ],
 
   controllers: [ResultController],
-  providers: [ResultService],
+  providers: [ResultService, JwtStrategy, InternalServiceGuard],
 })
 export class ResultModule {}

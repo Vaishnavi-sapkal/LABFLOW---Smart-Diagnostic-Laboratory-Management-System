@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BadgeCheck, Search, XCircle } from 'lucide-react';
 import { verifyReport, type ReportVerification as VerifiedReport } from '../api/reports';
 import { Button } from '../components/ui/Button';
@@ -9,7 +10,8 @@ function formatDate(value?: string) {
 }
 
 export function ReportVerification() {
-  const [reportNo, setReportNo] = useState('');
+  const [searchParams] = useSearchParams();
+  const [reportNo, setReportNo] = useState(() => searchParams.get('reportNo') ?? '');
   const [report, setReport] = useState<VerifiedReport | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

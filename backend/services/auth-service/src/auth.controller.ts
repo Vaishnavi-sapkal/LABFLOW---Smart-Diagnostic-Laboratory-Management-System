@@ -2,9 +2,14 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   Get,
   Inject,
   InternalServerErrorException,
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+  Param,
   Post,
   Req,
   UnauthorizedException,
@@ -23,6 +28,7 @@ import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { RegistrationGuard } from './registration.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -37,8 +43,10 @@ export class AuthController {
   // =========================
 
   @Post('register')
+  @UseGuards(RegistrationGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
-    summary: 'Register a new user',
+    summary: 'Create an account (admin; receptionist may create patients only)',
   })
   @ApiResponse({
     status: 201,
@@ -106,11 +114,15 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized - Invalid or missing JWT token',
   })
-  getProtected(@Req() req: any) {
-    return {
-      message: 'JWT authentication successful',
-      user: req.user,
-    };
+  async getProtected(@Req() req: any) {
+    try {
+      return { message: 'JWT authentication successful', user: await this.authLogic.getActiveUser(req.user.userId) };
+    } catch (error) {
+      if (error instanceof Error && error.message === 'User account is inactive') {
+        throw new UnauthorizedException(error.message);
+      }
+      throw new InternalServerErrorException('Unable to validate the user account');
+    }
   }
 
   // =========================
@@ -141,5 +153,31 @@ export class AuthController {
       message: 'Admin access granted',
       user: req.user,
     };
+  }
+
+  @Get('users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List user accounts (admin only)' })
+  listUsers() {
+    return this.authLogic.listUsers();
+  }
+
+  @Delete('users/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Hard-delete a user account and clean up its linked profile' })
+  async deleteUser(@Param('id') id: string, @Req() request: any) {
+    try {
+      return await this.authLogic.deleteUser(id, request.user.userId);
+    } catch (error) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof ServiceUnavailableException) throw error;
+      if (error instanceof Error && error.message === 'You cannot delete your own account while logged in.') {
+        throw new BadRequestException(error.message);
+      }
+      throw new InternalServerErrorException('Unable to delete the user account');
+    }
   }
 }

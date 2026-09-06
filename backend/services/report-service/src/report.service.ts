@@ -107,7 +107,7 @@ export class ReportService {
 
   private async getRemote<T>(configKey: string, resourcePath: string, id: string, resource: string): Promise<T> {
     const baseUrl = this.getBaseUrl(configKey);
-    try { return (await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${resourcePath}/${id}`))).data; }
+    try { return (await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${resourcePath}/${id}`, { headers: this.internalHeaders() }))).data; }
     catch (error: any) {
       if (error?.response?.status === 404) throw new NotFoundException(`${resource} ${id} was not found`);
       throw new ServiceUnavailableException(`Unable to retrieve ${resource.toLowerCase()} from its service`);
@@ -118,6 +118,12 @@ export class ReportService {
     const baseUrl = this.configService.get<string>(configKey);
     if (!baseUrl) throw new ServiceUnavailableException(`${configKey} is not configured`);
     return baseUrl.replace(/\/$/, '');
+  }
+
+  private internalHeaders() {
+    const secret = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
+    if (!secret) throw new ServiceUnavailableException('INTERNAL_SERVICE_SECRET is not configured');
+    return { 'x-internal-service-key': secret };
   }
 
   private ageOn(dateOfBirth: Date | string | undefined, onDate: Date) {

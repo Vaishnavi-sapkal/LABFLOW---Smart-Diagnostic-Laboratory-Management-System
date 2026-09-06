@@ -138,7 +138,7 @@ export class BookingService {
 
     const testResults = await Promise.all(testIds.map(async (testId) => {
       try {
-        const response = await firstValueFrom(this.httpService.get<TestResponse>(`${testServiceUrl.replace(/\/$/, '')}/tests/${testId}`));
+        const response = await firstValueFrom(this.httpService.get<TestResponse>(`${testServiceUrl.replace(/\/$/, '')}/tests/${testId}`, { headers: this.internalHeaders() }));
         return response.data;
       } catch {
         throw new NotFoundException(`Test ${testId} was not found in test service`);
@@ -159,7 +159,7 @@ export class BookingService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get<DoctorResponse>(`${doctorServiceUrl.replace(/\/$/, '')}/doctors/${doctorId}`),
+        this.httpService.get<DoctorResponse>(`${doctorServiceUrl.replace(/\/$/, '')}/doctors/${doctorId}`, { headers: this.internalHeaders() }),
       );
       if (!response.data.isActive) {
         throw new BadRequestException(`Doctor ${doctorId} is inactive and cannot receive bookings`);
@@ -180,5 +180,11 @@ export class BookingService {
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
     return { start, end };
+  }
+
+  private internalHeaders() {
+    const secret = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
+    if (!secret) throw new ServiceUnavailableException('INTERNAL_SERVICE_SECRET is not configured');
+    return { 'x-internal-service-key': secret };
   }
 }

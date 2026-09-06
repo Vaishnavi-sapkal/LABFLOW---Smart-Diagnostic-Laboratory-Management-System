@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Save } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Field, FormSection } from '../components/ui/FormSection';
 import { Input, Select, Textarea } from '../components/ui/Input';
+import { SearchBar } from '../components/ui/SearchBar';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { PageContainer } from '../components/layout/PageContainer';
 import { StepTracker } from '../components/laboratory/StepTracker';
-import { createPatient, type CreatedPatient, type PatientGender } from '../api/patients';
+import { createPatient, listPatients, updatePatient, type CreatedPatient, type PatientGender } from '../api/patients';
+import { createOrLinkPatientAccount } from '../api/patientAccountProvisioning';
+import { useAuth } from '../app/AuthContext';
 
 interface PatientFormState {
   fullName: string;
@@ -25,18 +29,18 @@ interface PatientFormState {
 }
 
 const initialForm: PatientFormState = {
-  fullName: 'Priya Joshi',
-  dateOfBirth: '1992-04-18',
+  fullName: '',
+  dateOfBirth: '',
   gender: 'female',
   bloodGroup: 'B+',
-  mobile: '+919876542110',
-  email: 'priya.joshi@example.in',
-  address: 'Koregaon Park, Pune',
-  city: 'Pune',
-  pincode: '411001',
-  referringDoctor: 'Dr. Ananya Sharma',
-  governmentId: '123456789012',
-  emergencyContact: '+91 98220 85411',
+  mobile: '',
+  email: '',
+  address: '',
+  city: '',
+  pincode: '',
+  referringDoctor: '',
+  governmentId: '',
+  emergencyContact: '',
 };
 
 function getAge(dateOfBirth: string) {
@@ -55,16 +59,61 @@ function displayGender(gender: string) {
 }
 
 export function PatientRegistration() {
+  const { role } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState(initialForm);
   const [registered, setRegistered] = useState(false);
   const [registeredPatient, setRegisteredPatient] = useState<CreatedPatient | null>(null);
   const [registrationError, setRegistrationError] = useState('');
+  const accountTab = searchParams.get('tab') === 'account' || searchParams.get('account') === 'true';
+  const [createPatientAccount, setCreatePatientAccount] = useState(accountTab);
+  const [accountPassword, setAccountPassword] = useState('');
+  const [existingPatientSearch, setExistingPatientSearch] = useState('');
+  const [existingPatients, setExistingPatients] = useState<CreatedPatient[]>([]);
+  const [patientSearchError, setPatientSearchError] = useState('');
+
+  useEffect(() => {
+    setCreatePatientAccount(accountTab);
+  }, [accountTab]);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void listPatients(existingPatientSearch.trim() || undefined)
+        .then((patients) => { if (active) { setExistingPatients(patients); setPatientSearchError(''); } })
+        .catch((error) => { if (active) setPatientSearchError(error instanceof Error ? error.message : 'Unable to search patients.'); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [existingPatientSearch]);
+
+  const selectExistingPatient = (patient: CreatedPatient) => {
+    setForm((current) => ({ ...current, fullName: patient.fullName, dateOfBirth: patient.dateOfBirth.slice(0, 10), gender: patient.gender, bloodGroup: (patient.bloodGroup ?? current.bloodGroup) as PatientFormState['bloodGroup'], mobile: patient.mobile, email: patient.email ?? '', city: patient.city ?? '', governmentId: patient.aadhaarNumber ?? '' }));
+    setExistingPatientSearch('');
+    setExistingPatients([]);
+  };
 
   const handleRegister = async () => {
     setRegistrationError('');
 
     try {
-      const patient = await createPatient({
+      if (createPatientAccount) {
+        const { patient } = await createOrLinkPatientAccount({
+          fullName: form.fullName,
+          dateOfBirth: form.dateOfBirth,
+          gender: form.gender,
+          bloodGroup: form.bloodGroup,
+          aadhaarNumber: form.governmentId || undefined,
+          mobile: form.mobile,
+          email: form.email || undefined,
+          city: form.city || undefined,
+          password: accountPassword,
+        });
+        setRegisteredPatient(patient);
+        setRegistered(true);
+        return;
+      }
+
+      const patientPayload = {
         fullName: form.fullName,
         dateOfBirth: form.dateOfBirth,
         gender: form.gender,
@@ -73,7 +122,15 @@ export function PatientRegistration() {
         mobile: form.mobile,
         email: form.email || undefined,
         city: form.city || undefined,
-      });
+      };
+      const mobileMatches = await listPatients(form.mobile);
+      const existingPatient = mobileMatches.find((patient) => patient.mobile.replace(/\D/g, '') === form.mobile.replace(/\D/g, ''));
+      if (existingPatient && !existingPatient._id) {
+        throw new Error('The matched patient profile cannot be updated because it has no database ID.');
+      }
+      const patient = existingPatient
+        ? await updatePatient(existingPatient._id!, patientPayload)
+        : await createPatient(patientPayload);
 
       setRegisteredPatient(patient);
       setRegistered(true);
@@ -89,6 +146,11 @@ export function PatientRegistration() {
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="grid gap-5">
           <StepTracker activeIndex={2} steps={['Identity', 'Medical', 'Consent', 'Register']} />
+          <div className="flex border-b border-border" role="tablist" aria-label="Patient registration options">
+            <button aria-selected={!accountTab} className={`border-b-2 px-4 py-3 text-sm font-semibold ${!accountTab ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`} onClick={() => setSearchParams({})} role="tab" type="button">Patient</button>
+            <button aria-selected={accountTab} className={`border-b-2 px-4 py-3 text-sm font-semibold ${accountTab ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`} onClick={() => setSearchParams({ tab: 'account' })} role="tab" type="button">Register Patient Account</button>
+          </div>
+          <section className="card p-5"><h2 className="mb-3 text-base font-semibold">Find an existing patient</h2><SearchBar aria-label="Search existing patients" onChange={(event) => setExistingPatientSearch(event.target.value)} placeholder="Search name, patient ID, or mobile" value={existingPatientSearch} />{patientSearchError ? <p className="mt-2 text-sm text-danger">{patientSearchError}</p> : null}{existingPatients.length ? <div className="mt-3 grid gap-2">{existingPatients.map((patient) => <button className="rounded-ui border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted" key={patient._id ?? patient.patientId} onClick={() => selectExistingPatient(patient)} type="button"><span className="font-semibold">{patient.fullName}</span><span className="ml-2 text-ink-muted">{patient.patientId} · {patient.mobile}</span></button>)}</div> : existingPatientSearch ? <p className="mt-2 text-sm text-ink-muted">No matching patients.</p> : null}</section>
           <FormSection title="Personal Details" description="Capture verified patient demographics.">
             <Field label="Full Name"><Input value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} /></Field>
             <Field label="Date of Birth"><Input value={form.dateOfBirth} onChange={(event) => setForm((current) => ({ ...current, dateOfBirth: event.target.value }))} type="date" /></Field>
@@ -114,6 +176,11 @@ export function PatientRegistration() {
               <label className="flex items-start gap-3"><Checkbox defaultChecked /> Emergency contact and referral details verified.</label>
             </div>
           </section>
+          {(role === 'Admin' || role === 'Receptionist') && accountTab ? (
+            <FormSection title="Patient portal account" description="Create a sign-in account and link it to this patient profile.">
+              <Field label="Temporary password"><Input type="password" value={accountPassword} onChange={(event) => setAccountPassword(event.target.value)} /></Field>
+            </FormSection>
+          ) : null}
         </div>
         <aside className="card h-fit p-5 xl:sticky xl:top-24">
           <div className="flex items-center justify-between"><h2 className="text-base font-semibold">Patient Preview</h2><StatusBadge tone={registered ? 'success' : 'warning'}>{registered ? 'Registered' : 'Draft'}</StatusBadge></div>

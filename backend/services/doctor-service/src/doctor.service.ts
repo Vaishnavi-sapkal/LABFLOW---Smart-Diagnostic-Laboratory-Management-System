@@ -25,13 +25,27 @@ export class DoctorService {
     const filter: FilterQuery<DoctorDocument> = {};
     if (isActive === 'true') filter.isActive = true;
     if (isActive === 'false') filter.isActive = false;
-    if (search) filter.fullName = { $regex: this.escapeRegex(search), $options: 'i' };
+    if (search) {
+      const expression = { $regex: this.escapeRegex(search), $options: 'i' };
+      filter.$or = [
+        { fullName: expression },
+        { specialization: expression },
+        { email: expression },
+        { mobile: expression },
+      ];
+    }
     return this.doctorModel.find(filter).sort({ fullName: 1 }).exec();
   }
 
   async findOne(id: string) {
     const doctor = await this.doctorModel.findById(id).exec();
     if (!doctor) throw new NotFoundException(`Doctor ${id} was not found`);
+    return doctor;
+  }
+
+  async findByUserId(userId: string) {
+    const doctor = await this.doctorModel.findOne({ userId, isActive: true }).exec();
+    if (!doctor) throw new NotFoundException('No active doctor profile is linked to this account');
     return doctor;
   }
 
@@ -45,6 +59,11 @@ export class DoctorService {
     const doctor = await this.doctorModel.findByIdAndUpdate(id, { isActive: false }, { new: true }).exec();
     if (!doctor) throw new NotFoundException(`Doctor ${id} was not found`);
     return doctor;
+  }
+
+  async deactivateByUserId(userId: string) {
+    const result = await this.doctorModel.updateMany({ userId }, { isActive: false }).exec();
+    return { deactivated: result.modifiedCount > 0, matchedCount: result.matchedCount };
   }
 
   private escapeRegex(value: string) {

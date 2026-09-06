@@ -26,9 +26,9 @@ export interface CreateDoctorDto {
 
 export type UpdateDoctorDto = Partial<CreateDoctorDto>;
 
-export async function listDoctors(): Promise<DoctorDocument[]> {
+export async function listDoctors(search?: string): Promise<DoctorDocument[]> {
   try {
-    const { data } = await client.get<DoctorDocument[]>('/doctors');
+    const { data } = await client.get<DoctorDocument[]>('/doctors', { params: search ? { search } : undefined });
     return data;
   } catch (error) {
     if (isAxiosError(error)) {
@@ -52,6 +52,11 @@ export async function getDoctor(id: string): Promise<DoctorDocument> {
 
     throw error;
   }
+}
+
+export async function getMyDoctor(): Promise<DoctorDocument> {
+  try { return (await client.get<DoctorDocument>('/doctors/me')).data; }
+  catch (error) { if (isAxiosError(error)) throw new Error(typeof error.response?.data?.message === 'string' ? error.response.data.message : 'Unable to load your doctor profile.'); throw error; }
 }
 
 export async function createDoctor(payload: CreateDoctorDto): Promise<DoctorDocument> {

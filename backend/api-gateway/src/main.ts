@@ -20,6 +20,30 @@ async function bootstrap() {
     response.json({ status: 'ok', service: 'api-gateway' });
   });
 
+  // Services are not publicly exposed in the deployment topology. Validate every
+  // non-public request at the gateway against auth-service so a deleted/disabled
+  // user cannot continue using an otherwise valid JWT until it expires.
+  const authServiceUrl = (process.env.AUTH_SERVICE_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+  app.use('/api', async (request: any, response: any, next: () => void) => {
+    const path = request.path as string;
+    const isPublic = request.method === 'OPTIONS' || (request.method === 'POST' && (path === '/auth/login' || path === '/auth/register')) ||
+      path === '/auth/protected' || path.startsWith('/reports/verify/');
+    if (isPublic) return next();
+
+    const authorization = request.headers.authorization;
+    if (typeof authorization !== 'string' || !authorization.startsWith('Bearer ')) {
+      return response.status(401).json({ message: 'Authentication is required' });
+    }
+
+    try {
+      const session = await fetch(`${authServiceUrl}/auth/protected`, { headers: { authorization } });
+      if (!session.ok) return response.status(401).json({ message: 'Your session is no longer active. Please sign in again.' });
+      return next();
+    } catch {
+      return response.status(503).json({ message: 'Authentication service is unavailable' });
+    }
+  });
+
   const services = [
     { prefix: '/api/auth', target: process.env.AUTH_SERVICE_URL ?? 'http://localhost:3001' },
     { prefix: '/api/patients', target: process.env.PATIENT_SERVICE_URL ?? 'http://localhost:3002' },

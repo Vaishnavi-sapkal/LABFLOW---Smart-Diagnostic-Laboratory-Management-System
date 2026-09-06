@@ -5,14 +5,20 @@ import { ConfigService } from '@nestjs/config';
 export class DashboardService {
   constructor(private readonly configService: ConfigService) {}
 
+  private internalRequestOptions(): RequestInit {
+    const secret = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
+    if (!secret) throw new Error('INTERNAL_SERVICE_SECRET is not configured');
+    return { headers: { 'X-Internal-Service-Key': secret } };
+  }
+
   private async fetchData(url: string): Promise<any[]> {
     try {
-      const response = await fetch(url);
-      if (!response.ok) return [];
+      const response = await fetch(url, this.internalRequestOptions());
+      if (!response.ok) throw new Error(`Dashboard dependency failed (${response.status}): ${url}`);
       const data = await response.json();
       return Array.isArray(data) ? data : [data];
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -41,13 +47,13 @@ export class DashboardService {
 
   private async fetchSamples(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.configService.get('SAMPLE_SERVICE_URL')}/samples`);
-      if (!response.ok) return [];
+      const response = await fetch(`${this.configService.get('SAMPLE_SERVICE_URL')}/samples`, this.internalRequestOptions());
+      if (!response.ok) throw new Error(`Dashboard sample dependency failed (${response.status})`);
       const grouped = await response.json();
       if (Array.isArray(grouped)) return grouped;
       return Object.values(grouped).flatMap((samples) => Array.isArray(samples) ? samples : []);
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 

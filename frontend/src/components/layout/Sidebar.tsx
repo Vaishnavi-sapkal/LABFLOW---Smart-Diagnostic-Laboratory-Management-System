@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { Banknote, Bell, ClipboardCheck, FileText, FlaskConical, Home, LayoutDashboard, Microscope, ReceiptText, Stethoscope, TestTubeDiagonal, UserPlus } from 'lucide-react';
+import { Banknote, Bell, ClipboardCheck, FileText, FlaskConical, Home, LayoutDashboard, Microscope, ReceiptText, Stethoscope, TestTubeDiagonal, UserCog, UserPlus } from 'lucide-react';
 import { cn } from '@labflow/utils/cn';
 import { useAuth } from '../../app/AuthContext';
 import { useUnreadNotificationsCount } from '../../hooks/useUnreadNotificationsCount';
@@ -14,14 +14,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Doctor', 'Receptionist', 'Lab Technician'] },
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['Admin'] },
   { label: 'Patients', path: '/patients/register', icon: UserPlus, roles: ['Admin', 'Receptionist'] },
+  { label: 'Create Account', path: '/accounts/create', icon: UserCog, roles: ['Admin'] },
   { label: 'Doctors', path: '/doctors', icon: Stethoscope, roles: ['Admin'] },
   { label: 'Manage Tests', path: '/tests/manage', icon: FlaskConical, roles: ['Admin'] },
-  { label: 'Test Booking', path: '/bookings/new', icon: ClipboardCheck, roles: ['Admin', 'Receptionist', 'Patient'] },
+  { label: 'Test Booking', path: '/bookings/new', icon: ClipboardCheck, roles: ['Admin', 'Receptionist'] },
   { label: 'Billing', path: '/billing', icon: Banknote, roles: ['Admin', 'Receptionist'] },
   { label: 'Sample Tracking', path: '/samples', icon: FlaskConical, roles: ['Admin', 'Lab Technician'] },
-  { label: 'Result Entry', path: '/results/entry', icon: Microscope, roles: ['Lab Technician'] },
+  { label: 'Result Entry', path: '/samples', icon: Microscope, roles: ['Lab Technician'] },
   { label: 'Verification', path: '/results/verification', icon: ReceiptText, roles: ['Doctor'] },
   { label: 'Reports', path: '/reports/preview', icon: FileText, roles: ['Admin', 'Doctor', 'Lab Technician'] },
   { label: 'My Portal', path: '/portal', icon: Home, roles: ['Patient'] },

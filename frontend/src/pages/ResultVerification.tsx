@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { ResultTable } from '../components/laboratory/ResultTable';
 import { Button } from '../components/ui/Button';
-import { Select, Textarea } from '../components/ui/Input';
+import { Textarea } from '../components/ui/Input';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { PageContainer } from '../components/layout/PageContainer';
 import { useAuth } from '../app/AuthContext';
-import { listDoctors, type DoctorDocument } from '../api/doctors';
+import { getMyDoctor } from '../api/doctors';
 import { getResult, listResults, type ResultDocument } from '../api/results';
 import { createVerification, listVerifications, reviewVerification, type VerificationDocument } from '../api/verifications';
 import type { Result } from '../types/labflow';
@@ -25,9 +25,7 @@ function toTableResults(result: ResultDocument | null): Result[] {
 
 export function ResultVerification() {
   const { user } = useAuth();
-  const [doctors, setDoctors] = useState<DoctorDocument[]>([]);
   const [doctorId, setDoctorId] = useState('');
-  const [linkedDoctor, setLinkedDoctor] = useState(false);
   const [queue, setQueue] = useState<VerificationDocument[]>([]);
   const [selectedVerificationId, setSelectedVerificationId] = useState('');
   const [selectedResult, setSelectedResult] = useState<ResultDocument | null>(null);
@@ -53,17 +51,14 @@ export function ResultVerification() {
       setLoading(true);
       setPageError('');
       try {
-        const activeDoctors = (await listDoctors()).filter((doctor) => doctor.isActive !== false);
+        const doctor = await getMyDoctor();
         if (!active) return;
 
-        setDoctors(activeDoctors);
-        const matchedDoctor = user?.id ? activeDoctors.find((doctor) => doctor.userId === user.id) : undefined;
-        const resolvedDoctorId = matchedDoctor?._id ?? activeDoctors[0]?._id ?? '';
-        setLinkedDoctor(Boolean(matchedDoctor));
+        const resolvedDoctorId = doctor._id;
         setDoctorId(resolvedDoctorId);
 
         if (!resolvedDoctorId) {
-          setPageError('No active doctor is available for verification.');
+          setPageError('Your account is not linked to an active doctor profile. Please contact an administrator.');
           return;
         }
 
@@ -109,20 +104,6 @@ export function ResultVerification() {
     return () => { active = false; };
   }, [selectedVerification]);
 
-  const changeDoctor = async (id: string) => {
-    setDoctorId(id);
-    setLinkedDoctor(false);
-    setPageError('');
-    setLoading(true);
-    try {
-      await refreshQueue(id);
-    } catch (error) {
-      setPageError(error instanceof Error ? error.message : 'Unable to load verification queue. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleReview = async (status: 'approved' | 'rejected') => {
     if (!selectedVerification) return;
     if (status === 'rejected' && !doctorComment.trim()) {
@@ -150,13 +131,6 @@ export function ResultVerification() {
       <div className="grid gap-6 xl:grid-cols-[1fr_330px]">
         <section className="card p-5">
           <div className="mb-4 flex items-center justify-between"><h2 className="text-base font-semibold">Doctor verification</h2><StatusBadge tone={abnormalCount ? 'warning' : 'success'}>{abnormalCount ? `${abnormalCount} abnormal` : 'Ready for review'}</StatusBadge></div>
-          {!linkedDoctor && doctors.length > 0 && (
-            <label className="mb-4 grid gap-1.5 text-xs font-medium text-ink-muted">Reviewing doctor
-              <Select onChange={(event) => void changeDoctor(event.target.value)} value={doctorId}>
-                {doctors.map((doctor) => <option key={doctor._id} value={doctor._id}>{doctor.fullName}</option>)}
-              </Select>
-            </label>
-          )}
           {pageError && <p className="mb-4 text-sm text-danger">{pageError}</p>}
           {loading ? <p className="py-10 text-center text-sm text-ink-muted">Loading verification queue…</p> : !selectedVerification ? <p className="py-10 text-center text-sm text-ink-muted">No pending results require review.</p> : (
             <>

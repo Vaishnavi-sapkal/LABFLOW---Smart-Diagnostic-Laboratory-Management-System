@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -38,6 +39,9 @@ type SampleSnapshot = {
   priority?: string;
 };
 
+type DoctorSnapshot = { _id: string; userId?: string; isActive?: boolean };
+type Actor = { userId: string; role: string };
+
 @Injectable()
 export class VerificationService {
   private readonly logger = new Logger(VerificationService.name);
@@ -49,14 +53,15 @@ export class VerificationService {
     private readonly configService: ConfigService,
   ) {}
 
-  async create(dto: CreateVerificationDto) {
+  async create(dto: CreateVerificationDto, actor?: Actor) {
+    const doctorId = actor?.role === 'doctor' ? await this.doctorIdForUser(actor.userId) : dto.doctorId;
     const result = await this.fetchResult(dto.resultId);
 
     if (result.status !== 'submitted') {
       throw new BadRequestException('Only submitted results can be sent for verification');
     }
 
-    await this.validateDoctor(dto.doctorId);
+    await this.validateDoctor(doctorId);
 
     const sample = await this.fetchSample(result.sampleId);
     const reportId = this.toReportId(sample.sampleId);
@@ -79,16 +84,17 @@ export class VerificationService {
       testId: result.testId,
       testName: sample.testDisplayName,
       technician: result.enteredBy ?? sample.handledBy ?? 'Unassigned',
-      doctorId: dto.doctorId,
+      doctorId,
       priority: sample.priority,
       submittedAt: new Date(result.submittedAt),
       status: 'pending',
     });
   }
 
-  findAll(filters?: { doctorId?: string; status?: string }) {
+  async findAll(filters?: { doctorId?: string; status?: string }, actor?: Actor) {
     const query: FilterQuery<VerificationDocument> = {};
-    if (filters?.doctorId) query.doctorId = filters.doctorId;
+    if (actor?.role === 'doctor') query.doctorId = await this.doctorIdForUser(actor.userId);
+    else if (filters?.doctorId) query.doctorId = filters.doctorId;
     if (filters?.status) query.status = filters.status;
     return this.verificationModel.find(query).sort({ submittedAt: 1 }).exec();
   }
@@ -99,12 +105,13 @@ export class VerificationService {
     return verification;
   }
 
-  async review(id: string, dto: ReviewDto) {
+  async review(id: string, dto: ReviewDto, actor?: Actor) {
     if (dto.status === 'rejected' && !dto.doctorComment?.trim()) {
       throw new BadRequestException('doctorComment is required when rejecting a verification');
     }
 
     const verification = await this.findOne(id);
+    await this.assertDoctorOwnership(verification, actor);
     if (verification.status !== 'pending') {
       throw new BadRequestException('Only pending verifications can be reviewed');
     }
@@ -131,8 +138,10 @@ export class VerificationService {
     return verification;
   }
 
-  async remove(id: string) {
-    const verification = await this.verificationModel.findByIdAndDelete(id).exec();
+  async remove(id: string, actor?: Actor) {
+    const verification = await this.findOne(id);
+    await this.assertDoctorOwnership(verification, actor);
+    await verification.deleteOne();
     if (!verification) throw new NotFoundException(`Verification ${id} was not found`);
     return { deleted: true, id };
   }
@@ -146,7 +155,8 @@ export class VerificationService {
   }
 
   private async validateDoctor(doctorId: string): Promise<void> {
-    await this.getRemote('DOCTOR_SERVICE_URL', 'doctors', doctorId, 'Doctor');
+    const doctor = await this.getRemote<DoctorSnapshot>('DOCTOR_SERVICE_URL', 'doctors', doctorId, 'Doctor');
+    if (!doctor.isActive) throw new BadRequestException(`Doctor ${doctorId} is inactive and cannot receive verifications`);
   }
 
   private async updateResultStatus(
@@ -157,7 +167,7 @@ export class VerificationService {
     const baseUrl = this.getBaseUrl('RESULT_SERVICE_URL');
     try {
       await firstValueFrom(
-        this.httpService.patch(`${baseUrl}/results/${resultId}/status`, { status, comment }),
+        this.httpService.patch(`${baseUrl}/results/${resultId}/status`, { status, comment }, { headers: this.internalHeaders() }),
       );
     } catch (error: any) {
       if (error?.response?.status === 404) {
@@ -174,7 +184,7 @@ export class VerificationService {
     try {
       const baseUrl = this.getBaseUrl('REPORT_SERVICE_URL');
       await firstValueFrom(
-        this.httpService.post(`${baseUrl}/reports`, { verificationId }),
+        this.httpService.post(`${baseUrl}/reports`, { verificationId }, { headers: this.internalHeaders() }),
       );
       return true;
     } catch (error: any) {
@@ -194,7 +204,7 @@ export class VerificationService {
   ): Promise<T> {
     const baseUrl = this.getBaseUrl(configKey);
     try {
-      const response = await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${resourcePath}/${id}`));
+      const response = await firstValueFrom(this.httpService.get<T>(`${baseUrl}/${resourcePath}/${id}`, { headers: this.internalHeaders() }));
       return response.data;
     } catch (error: any) {
       if (error?.response?.status === 404) {
@@ -208,6 +218,32 @@ export class VerificationService {
     const baseUrl = this.configService.get<string>(configKey);
     if (!baseUrl) throw new ServiceUnavailableException(`${configKey} is not configured`);
     return baseUrl.replace(/\/$/, '');
+  }
+
+  private async doctorIdForUser(userId: string): Promise<string> {
+    const baseUrl = this.getBaseUrl('DOCTOR_SERVICE_URL');
+    try {
+      const doctors = (await firstValueFrom(this.httpService.get<DoctorSnapshot[]>(`${baseUrl}/doctors`, { headers: this.internalHeaders() }))).data;
+      const doctor = doctors.find((item) => item.userId === userId && item.isActive !== false);
+      if (!doctor) throw new ForbiddenException('Your account is not linked to a doctor profile');
+      return doctor._id;
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new ServiceUnavailableException('Unable to validate the doctor profile');
+    }
+  }
+
+  private async assertDoctorOwnership(verification: VerificationDocument, actor?: Actor) {
+    if (!actor || actor.role === 'admin') return;
+    if (actor.role !== 'doctor' || verification.doctorId !== await this.doctorIdForUser(actor.userId)) {
+      throw new ForbiddenException('You may only access verifications assigned to your doctor profile');
+    }
+  }
+
+  private internalHeaders() {
+    const secret = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
+    if (!secret) throw new ServiceUnavailableException('INTERNAL_SERVICE_SECRET is not configured');
+    return { 'x-internal-service-key': secret };
   }
 
   private toReportId(sampleId: string) {

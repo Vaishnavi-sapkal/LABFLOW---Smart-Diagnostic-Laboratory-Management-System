@@ -91,7 +91,7 @@ export class SampleService {
     const baseUrl = this.configService.get<string>('BOOKING_SERVICE_URL');
     if (!baseUrl) throw new ServiceUnavailableException('BOOKING_SERVICE_URL is not configured');
     try {
-      await firstValueFrom(this.httpService.get(`${baseUrl.replace(/\/$/, '')}/bookings/${bookingId}`));
+      await firstValueFrom(this.httpService.get(`${baseUrl.replace(/\/$/, '')}/bookings/${bookingId}`, { headers: this.internalHeaders() }));
     } catch (error: any) {
       if (error?.response?.status === 404) throw new NotFoundException(`Booking ${bookingId} was not found`);
       throw new ServiceUnavailableException('Unable to validate booking with booking service');
@@ -106,5 +106,11 @@ export class SampleService {
     const sequence = latest ? Number(latest.sampleId.slice(-3)) + 1 : 1;
     if (sequence > 999) throw new ConflictException(`Monthly sample ID limit reached for ${month}`);
     return `${prefix}${String(sequence).padStart(3, '0')}`;
+  }
+
+  private internalHeaders() {
+    const secret = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
+    if (!secret) throw new ServiceUnavailableException('INTERNAL_SERVICE_SECRET is not configured');
+    return { 'x-internal-service-key': secret };
   }
 }

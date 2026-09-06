@@ -5,6 +5,7 @@ import { DataCell, DataTable } from '../components/ui/DataTable';
 import { Checkbox } from '../components/ui/Checkbox';
 import { Field, FormSection } from '../components/ui/FormSection';
 import { Input } from '../components/ui/Input';
+import { SearchBar } from '../components/ui/SearchBar';
 import { PageContainer } from '../components/layout/PageContainer';
 import {
   createDoctor,
@@ -69,12 +70,13 @@ export function DoctorManagement() {
   const [loadError, setLoadError] = useState('');
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [search, setSearch] = useState('');
 
-  const loadDoctors = async () => {
+  const loadDoctors = async (query = search) => {
     setLoading(true);
     setLoadError('');
     try {
-      setDoctors(await listDoctors());
+      setDoctors(await listDoctors(query.trim() || undefined));
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Unable to load doctors. Please try again.');
     } finally {
@@ -83,8 +85,9 @@ export function DoctorManagement() {
   };
 
   useEffect(() => {
-    void loadDoctors();
-  }, []);
+    const timer = window.setTimeout(() => { void loadDoctors(search); }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -158,7 +161,7 @@ export function DoctorManagement() {
         </form>
 
         <section className="card p-5">
-          <h2 className="mb-4 text-base font-semibold">Doctors</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Doctors</h2><SearchBar aria-label="Search doctors" className="w-full sm:max-w-sm" onChange={(event) => setSearch(event.target.value)} placeholder="Search name, specialty, email, or mobile" value={search} /></div>
           {loadError && <p className="mb-3 text-sm text-danger">{loadError}</p>}
           {actionError && <p className="mb-3 text-sm text-danger">{actionError}</p>}
           {loading ? <div className="py-8 text-center text-sm text-ink-muted">Loading doctors...</div> : (

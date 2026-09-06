@@ -4,6 +4,7 @@
     "scripts":  {
                     "start:dev":  "nest start --watch",
                     "build":  "tsc -p tsconfig.json",
+                    "test": "jest --config ../../../jest.config.js --runInBand",
                     "start":  "node dist/main.js"
                 },
     "devDependencies":  {

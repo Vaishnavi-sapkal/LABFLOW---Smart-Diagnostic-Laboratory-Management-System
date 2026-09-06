@@ -48,9 +48,15 @@ export interface PackageSavings {
   savings: number;
 }
 
-export async function listTests(): Promise<TestDocument[]> {
+export async function listTests(filters?: { category?: string; isPackage?: boolean; search?: string }): Promise<TestDocument[]> {
   try {
-    const { data } = await client.get<TestDocument[]>('/tests');
+    const { data } = await client.get<TestDocument[]>('/tests', {
+      params: {
+        ...(filters?.category ? { category: filters.category } : {}),
+        ...(filters?.isPackage !== undefined ? { isPackage: String(filters.isPackage) } : {}),
+        ...(filters?.search ? { search: filters.search } : {}),
+      },
+    });
     return data;
   } catch (error) {
     if (isAxiosError(error)) {

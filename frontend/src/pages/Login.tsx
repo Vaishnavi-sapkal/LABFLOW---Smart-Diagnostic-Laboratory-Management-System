@@ -24,7 +24,7 @@ const roles: RoleOption[] = [
     icon: '⚙',
     colorVar: '--role-admin',
     bgVar: '--role-admin-bg',
-    placeholder: 'admin@labflow.in',
+    placeholder: 'your.email@domain.com',
   },
   {
     id: 'Doctor',
@@ -33,7 +33,7 @@ const roles: RoleOption[] = [
     icon: '🩺',
     colorVar: '--role-doctor',
     bgVar: '--role-doctor-bg',
-    placeholder: 'doctor@labflow.in',
+    placeholder: 'your.email@domain.com',
   },
   {
     id: 'Receptionist',
@@ -42,7 +42,7 @@ const roles: RoleOption[] = [
     icon: '🗂',
     colorVar: '--role-receptionist',
     bgVar: '--role-receptionist-bg',
-    placeholder: 'receptionist@labflow.in',
+    placeholder: 'your.email@domain.com',
   },
   {
     id: 'Lab Technician',
@@ -51,7 +51,7 @@ const roles: RoleOption[] = [
     icon: '🔬',
     colorVar: '--role-technician',
     bgVar: '--role-technician-bg',
-    placeholder: 'technician@labflow.in',
+    placeholder: 'your.email@domain.com',
   },
   {
     id: 'Patient',
@@ -60,7 +60,7 @@ const roles: RoleOption[] = [
     icon: '👤',
     colorVar: '--role-patient',
     bgVar: '--role-patient-bg',
-    placeholder: 'patient@email.com',
+    placeholder: 'your.email@domain.com',
   },
 ];
 
@@ -69,12 +69,6 @@ const features = [
   'Real-time sample tracking & status updates',
   'Automated report generation with digital sign-off',
   'Role-based access for complete audit trails',
-];
-
-const stats = [
-  ['12,400+', 'Tests/month'],
-  ['99.8%', 'Uptime'],
-  ['<4 min', 'Avg turnaround'],
 ];
 
 export function Login() {
@@ -158,14 +152,6 @@ export function Login() {
           </div>
         </div>
 
-        <div className="relative z-[1] mt-auto flex gap-8">
-          {stats.map(([value, label]) => (
-            <div key={label}>
-              <div className="text-xl font-extrabold text-white">{value}</div>
-              <div className="text-xs text-[rgb(var(--sidebar-logo-muted))]">{label}</div>
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="flex flex-1 items-center justify-center p-6 sm:p-12">
@@ -256,7 +242,7 @@ export function Login() {
                   className="h-[44px] w-full rounded-ui border-[1.5px] border-border bg-white px-3.5 text-sm text-ink outline-none focus:border-brand-600"
                   id="email"
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder={selected?.placeholder ?? 'admin@labflow.in'}
+                  placeholder={selected?.placeholder ?? 'your.email@domain.com'}
                   type="email"
                   value={email}
                 />
@@ -265,7 +251,7 @@ export function Login() {
               <div className="mb-6">
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="text-[13px] font-semibold text-ink" htmlFor="password">Password</label>
-                  <a className="text-xs text-brand-600" href="#">Forgot password?</a>
+                  <span className="text-xs text-ink-muted">Contact an administrator to reset your password.</span>
                 </div>
                 <input
                   className="h-[44px] w-full rounded-ui border-[1.5px] border-border bg-white px-3.5 text-sm text-ink outline-none focus:border-brand-600"
@@ -293,7 +279,7 @@ export function Login() {
                 </span>
               </button>
 
-              <p className="mt-4 text-center text-xs text-ink-muted">Protected by 256-bit TLS encryption · HIPAA compliant</p>
+              <p className="mt-4 text-center text-xs text-ink-muted">Secure access with role-based controls</p>
             </>
           )}
         </div>

@@ -57,16 +57,17 @@ export function TestBooking() {
   const [createdBooking, setCreatedBooking] = useState<CreatedBooking | null>(null);
   const [bookingError, setBookingError] = useState('');
   const [category, setCategory] = useState('All');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
 
     async function loadCatalog() {
       try {
-        const [tests, doctors, loadedPatients] = await Promise.all([listTests(), listDoctors(), listPatients()]);
+        const [doctors, loadedPatients] = await Promise.all([listDoctors(), listPatients()]);
         if (!active) return;
 
-        setTestDocuments(tests);
         setDoctorDocuments(doctors);
         setPatients(loadedPatients);
         setSelectedDoctorId((current) => current || doctors.find((doctor) => doctor.isActive !== false)?._id || '');
@@ -79,6 +80,34 @@ export function TestBooking() {
     void loadCatalog();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void listPatients(patientSearch.trim() || undefined)
+        .then((loadedPatients) => {
+          if (!active) return;
+          setPatients(loadedPatients);
+          setSelectedPatientId((current) => loadedPatients.some((patient) => patient._id === current) ? current : loadedPatients[0]?._id || '');
+        })
+        .catch((error) => { if (active) setDataError(error instanceof Error ? error.message : 'Unable to search patients.'); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [patientSearch]);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void listTests({ search: search.trim() || undefined, category: category === 'All' ? undefined : category })
+        .then((tests) => {
+          if (!active) return;
+          setTestDocuments(tests);
+          if (category === 'All') setCategories([...new Set(tests.filter((test) => !test.isPackage).map((test) => test.category))]);
+        })
+        .catch((error) => { if (active) setDataError(error instanceof Error ? error.message : 'Unable to search tests.'); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [search, category]);
 
   useEffect(() => {
     let active = true;
@@ -158,7 +187,7 @@ export function TestBooking() {
         savings: packageSavings[test._id] ?? 0,
       };
     });
-  const categories = ['All', ...new Set(catalogTests.map((test) => test.category))];
+  const categoryOptions = ['All', ...categories];
 
   const selectedPatient = patients.find((patient) => patient._id === selectedPatientId) ?? patients[0];
   const cartItems = catalogTests.filter((test) => cart.includes(test.id));
@@ -250,13 +279,7 @@ export function TestBooking() {
                 <Button size="sm" variant="outline" onClick={() => setShowPatientSelect((value) => !value)}>Change Patient</Button>
               </div>
               {showPatientSelect && (
-                <select
-                  className="focus-ring mt-3 h-9 w-full rounded-ui border border-border bg-white px-3 text-sm text-ink"
-                  onChange={(event) => setSelectedPatientId(event.target.value)}
-                  value={selectedPatientId}
-                >
-                  {patients.map((patient) => <option key={patient._id} value={patient._id}>{patient.fullName}</option>)}
-                </select>
+                <div className="mt-3 grid gap-2"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" size={14} /><Input aria-label="Search patients" className="h-9 pl-8 text-sm" onChange={(event) => setPatientSearch(event.target.value)} placeholder="Search name, patient ID, or mobile" value={patientSearch} /></div><select className="focus-ring h-9 w-full rounded-ui border border-border bg-white px-3 text-sm text-ink" onChange={(event) => setSelectedPatientId(event.target.value)} value={selectedPatientId}>{patients.map((patient) => <option key={patient._id} value={patient._id}>{patient.fullName} · {patient.patientId} · {patient.mobile}</option>)}</select></div>
               )}
             </div>
 
@@ -281,7 +304,7 @@ export function TestBooking() {
                     <Input className="h-9 rounded-[7px] pl-8 text-[13px]" onChange={(event) => setSearch(event.target.value)} placeholder="Search tests..." value={search} />
                   </div>
                   <div className="flex gap-1.5 overflow-x-auto pb-1 lg:pb-0">
-                    {categories.map((item) => (
+                    {categoryOptions.map((item) => (
                       <button
                         className={`h-9 whitespace-nowrap rounded-md border px-3 text-[11.5px] font-semibold transition ${category === item ? 'border-brand-600 bg-brand-50 text-brand-600' : 'border-border bg-white text-ink-muted hover:bg-surface-muted'}`}
                         key={item}

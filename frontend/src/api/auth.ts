@@ -14,6 +14,17 @@ export interface LoginResponse {
   user: AuthenticatedUser;
 }
 
+export type AccountRole = 'admin' | 'doctor' | 'receptionist' | 'technician' | 'patient';
+
+export interface RegisterAccountDto {
+  name: string;
+  email: string;
+  password: string;
+  role: AccountRole;
+}
+
+export type AccountSummary = AuthenticatedUser;
+
 interface ProtectedAuthResponse {
   user: {
     userId: string;
@@ -40,6 +51,44 @@ export async function login(email: string, password: string): Promise<LoginRespo
       throw new Error(typeof message === 'string' ? message : 'Unable to sign in. Please try again.');
     }
 
+    throw error;
+  }
+}
+
+export async function registerAccount(payload: RegisterAccountDto): Promise<AuthenticatedUser> {
+  try {
+    const { data } = await client.post<AuthenticatedUser>('/auth/register', payload);
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to create the account. Please try again.');
+    }
+    throw error;
+  }
+}
+
+export async function listAccounts(): Promise<AccountSummary[]> {
+  try {
+    const { data } = await client.get<AccountSummary[]>('/auth/users');
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to load accounts. Please try again.');
+    }
+    throw error;
+  }
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  try {
+    await client.delete(`/auth/users/${id}`);
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to delete the account. Please try again.');
+    }
     throw error;
   }
 }

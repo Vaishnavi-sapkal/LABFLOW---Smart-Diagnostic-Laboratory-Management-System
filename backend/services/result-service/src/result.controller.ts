@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import {
@@ -21,9 +22,13 @@ import { ResultService } from './result.service';
 import { CreateResultDto } from './dto/create-result.dto';
 import { UpdateValuesDto } from './dto/update-values.dto';
 import { SetStatusDto } from './dto/set-status.dto';
+import { Public, Roles, RolesGuard } from './auth';
+import { InternalService, InternalServiceGuard } from './internal-service.guard';
 
 @ApiTags('Results')
 @Controller('results')
+@UseGuards(InternalServiceGuard, RolesGuard)
+@Roles('admin', 'technician', 'lab_technician')
 export class ResultController {
   constructor(private readonly resultService: ResultService) {}
 
@@ -31,6 +36,7 @@ export class ResultController {
   // Health Check
   // =========================
   @Get('health')
+  @Public()
   @ApiOperation({
     summary: 'Health check',
   })
@@ -64,6 +70,7 @@ export class ResultController {
   // Get All Results
   // =========================
   @Get()
+  @InternalService()
   @ApiOperation({
     summary: 'Get all results',
   })
@@ -98,6 +105,7 @@ export class ResultController {
   // Get Result By ID
   // =========================
   @Get(':id')
+  @InternalService()
   @ApiOperation({
     summary: 'Get result by ID',
   })
@@ -183,6 +191,7 @@ export class ResultController {
   // Verify or Reject Result
   // =========================
   @Patch(':id/status')
+  @InternalService()
   @ApiOperation({
     summary: 'Verify or reject a submitted result',
   })

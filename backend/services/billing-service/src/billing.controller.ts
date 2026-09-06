@@ -1,14 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
-@ApiTags('Billing') @Controller('billing')
+import { Roles, RolesGuard } from './auth';
+import { InternalService, InternalServiceGuard } from './internal-service.guard';
+@ApiTags('Billing') @Controller('billing') @UseGuards(InternalServiceGuard, RolesGuard) @Roles('admin', 'receptionist')
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
   @Post() @ApiOperation({ summary: 'Create a draft invoice from a booking' }) create(@Body() dto: CreateInvoiceDto) { return this.billingService.create(dto); }
-  @Get() @ApiOperation({ summary: 'List invoices' }) findAll(@Query('patientId') patientId?: string, @Query('status') status?: string) { return this.billingService.findAll({ patientId, status }); }
+  @Get() @InternalService() @ApiOperation({ summary: 'List invoices' }) findAll(@Query('patientId') patientId?: string, @Query('status') status?: string) { return this.billingService.findAll({ patientId, status }); }
   @Get('by-invoice-no/:invoiceNo') @ApiOperation({ summary: 'Get an invoice by number' }) byNo(@Param('invoiceNo') invoiceNo: string) { return this.billingService.findByInvoiceNo(invoiceNo); }
   @Get(':id') @ApiOperation({ summary: 'Get an invoice by ID' }) findOne(@Param('id') id: string) { return this.billingService.findOne(id); }
   @Patch(':id/discount') @ApiOperation({ summary: 'Update a draft invoice discount' }) discount(@Param('id') id: string, @Body() dto: UpdateDiscountDto) { return this.billingService.updateDiscount(id, dto.discountPercent); }

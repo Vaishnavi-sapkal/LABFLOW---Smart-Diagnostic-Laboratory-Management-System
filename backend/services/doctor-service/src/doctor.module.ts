@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { JwtStrategy } from './auth';
+import { InternalServiceGuard } from './internal-service.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DoctorController, HealthController } from './doctor.controller';
@@ -16,6 +18,6 @@ import { DoctorService } from './doctor.service';
     MongooseModule.forFeature([{ name: Doctor.name, schema: DoctorSchema }]),
   ],
   controllers: [DoctorController, HealthController],
-  providers: [DoctorService],
+  providers: [DoctorService, JwtStrategy, InternalServiceGuard],
 })
 export class DoctorModule {}

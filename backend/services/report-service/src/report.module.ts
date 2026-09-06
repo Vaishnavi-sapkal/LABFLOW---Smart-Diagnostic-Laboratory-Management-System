@@ -1,5 +1,7 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { JwtStrategy } from './auth';
+import { InternalServiceGuard } from './internal-service.guard';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HealthController, ReportController } from './report.controller';
@@ -14,6 +16,6 @@ import { ReportService } from './report.service';
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),
   ],
   controllers: [ReportController, HealthController],
-  providers: [ReportService],
+  providers: [ReportService, JwtStrategy, InternalServiceGuard],
 })
 export class ReportModule {}

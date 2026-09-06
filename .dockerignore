@@ -5,3 +5,5 @@ dist
 .git
 frontend/*
 !frontend/package.json
+.env
+**/env

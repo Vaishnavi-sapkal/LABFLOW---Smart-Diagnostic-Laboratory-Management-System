@@ -4,8 +4,7 @@
     "scripts":  {
                     "start:dev":  "nest start --watch",
                     "build":  "tsc -p tsconfig.json",
-                    "seed": "npm run build && node dist/scripts/seed.js",
-                    "start":  "node dist/src/main.js"
+                    "start":  "node dist/main.js"
                 },
     "devDependencies":  {
                             "typescript":  "^5.5.4",

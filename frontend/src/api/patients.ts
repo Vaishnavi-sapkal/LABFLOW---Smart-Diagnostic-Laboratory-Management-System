@@ -51,3 +51,36 @@ export async function createPatient(payload: CreatePatientDto): Promise<CreatedP
     throw error;
   }
 }
+
+export interface PatientPortalData { patient: CreatedPatient; bookings: import('./bookings').CreatedBooking[]; reports: import('./reports').ReportDocument[]; invoices: import('./billing').Invoice[]; }
+
+export async function getMyPatientProfile(): Promise<CreatedPatient> {
+  try {
+    const { data } = await client.get<CreatedPatient>('/patients/me');
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to load your patient profile.');
+    }
+    throw error;
+  }
+}
+
+export async function getMyPatientPortal(): Promise<PatientPortalData> {
+  try { return (await client.get<PatientPortalData>('/patients/me/portal')).data; }
+  catch (error) { if (isAxiosError(error)) throw new Error(typeof error.response?.data?.message === 'string' ? error.response.data.message : 'Unable to load your portal.'); throw error; }
+}
+
+export async function updatePatient(id: string, payload: Partial<CreatePatientDto>): Promise<CreatedPatient> {
+  try {
+    const { data } = await client.patch<CreatedPatient>(`/patients/${id}`, payload);
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      throw new Error(typeof message === 'string' ? message : 'Unable to link the patient account. Please try again.');
+    }
+    throw error;
+  }
+}
