@@ -21,7 +21,7 @@ export class BookingController {
 
   @Get()
   @InternalService()
-  @Roles('admin', 'receptionist', 'doctor')
+  @Roles('admin', 'receptionist', 'doctor', 'technician', 'lab_technician')
   @ApiOperation({ summary: 'List bookings, optionally filtered by patient, doctor, status, or date' })
   findAll(
     @Query('patientId') patientId?: string,

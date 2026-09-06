@@ -21,6 +21,7 @@ export function PatientPortal() {
   const [patient, setPatient] = useState<CreatedPatient | null>(null);
   const [bookings, setBookings] = useState<CreatedBooking[]>([]);
   const [reports, setReports] = useState<ReportDocument[]>([]);
+  const [selectedReport, setSelectedReport] = useState<ReportDocument | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [upcomingDoctor, setUpcomingDoctor] = useState('');
   const [loading, setLoading] = useState(true);
@@ -71,10 +72,20 @@ export function PatientPortal() {
           </div>
           <section className="card p-5">
             <h2 className="mb-4 text-base font-semibold">Reports</h2>
-            {reports.length ? <DataTable columns={['Report', 'Test', 'Date', 'Status', 'Download']}>
-              {reports.map((report) => <tr className="hover:bg-surface-muted" key={report._id}><DataCell className="font-semibold">{report.reportNo}</DataCell><DataCell>{report.testName}</DataCell><DataCell>{toDate(report.reportDate)}</DataCell><DataCell><StatusBadge tone="success">Verified</StatusBadge></DataCell><DataCell><Button onClick={() => window.open(`/verify?reportNo=${encodeURIComponent(report.reportNo)}`, '_blank')} size="sm" variant="outline"><Download size={14} /> View</Button></DataCell></tr>)}
+            {reports.length ? <DataTable columns={['Report', 'Test', 'Date', 'Status', 'Details']}>
+              {reports.map((report) => <tr className="hover:bg-surface-muted" key={report._id}><DataCell className="font-semibold">{report.reportNo}</DataCell><DataCell>{report.testName}</DataCell><DataCell>{toDate(report.reportDate)}</DataCell><DataCell><StatusBadge tone="success">Verified</StatusBadge></DataCell><DataCell><Button onClick={() => setSelectedReport(report)} size="sm" variant="outline"><Download size={14} /> View</Button></DataCell></tr>)}
             </DataTable> : <p className="py-6 text-center text-sm text-ink-muted">No verified reports are available yet.</p>}
           </section>
+          {selectedReport && <section className="card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+              <div><h2 className="text-base font-semibold">{selectedReport.testName}</h2><p className="mt-1 text-sm text-ink-muted">{selectedReport.reportNo} · Verified {toDate(selectedReport.verifiedAt)}</p></div>
+              <Button onClick={() => setSelectedReport(null)} size="sm" variant="outline">Close</Button>
+            </div>
+            <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-ink-muted">Sample type:</span> {selectedReport.sampleType}</p><p><span className="text-ink-muted">Method:</span> {selectedReport.testMethod}</p><p><span className="text-ink-muted">Verified by:</span> {selectedReport.doctorName}</p>{selectedReport.clinicalRemarks && <p><span className="text-ink-muted">Doctor remarks:</span> {selectedReport.clinicalRemarks}</p>}</div>
+            <div className="mt-5 overflow-x-auto"><DataTable columns={['Parameter', 'Result', 'Unit', 'Reference range', 'Flag']}>
+              {selectedReport.values.map((value) => <tr className="hover:bg-surface-muted" key={value.parameterName}><DataCell className="font-medium">{value.parameterName}</DataCell><DataCell>{value.value ?? '—'}</DataCell><DataCell>{value.unit}</DataCell><DataCell>{value.referenceMin} – {value.referenceMax}</DataCell><DataCell><StatusBadge tone={value.flag === 'normal' ? 'success' : value.flag === 'high' ? 'danger' : 'warning'}>{value.flag}</StatusBadge></DataCell></tr>)}
+            </DataTable></div>
+          </section>}
         </section>
         <aside className="card h-fit p-5 xl:sticky xl:top-24">
           <div className="flex items-center justify-between"><h2 className="text-base font-semibold">Upcoming Booking</h2>{nextBooking && <StatusBadge tone="info">{nextBooking.status}</StatusBadge>}</div>

@@ -15,6 +15,8 @@ import {
   type GroupedSamples,
   type SampleDocument,
 } from '../api/samples';
+import { listBookings, type CreatedBooking } from '../api/bookings';
+import { listPatients, type CreatedPatient } from '../api/patients';
 
 const columns = [
   { key: 'collected', title: 'Collected' },
@@ -37,6 +39,7 @@ const initialSampleForm: Omit<CreateSampleDto, 'handledBy'> = {
   patientId: '',
   patientName: '',
   testDisplayName: '',
+  sampleType: '',
   priority: 'routine',
 };
 
@@ -44,6 +47,10 @@ export function SampleTracking() {
   const { user } = useAuth();
   const handledBy = user?.name ?? 'Lab staff';
   const [samples, setSamples] = useState<GroupedSamples>(emptySamples);
+  const [bookings, setBookings] = useState<CreatedBooking[]>([]);
+  const [patients, setPatients] = useState<CreatedPatient[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [bookingsError, setBookingsError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
@@ -67,6 +74,40 @@ export function SampleTracking() {
   useEffect(() => {
     void loadSamples();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadBookingsAwaitingCollection() {
+      setBookingsLoading(true);
+      setBookingsError('');
+      try {
+        const [loadedBookings, loadedPatients] = await Promise.all([listBookings(), listPatients()]);
+        if (!active) return;
+        setBookings(loadedBookings.filter((booking) => booking.status === 'pending' || booking.status === 'confirmed'));
+        setPatients(loadedPatients);
+      } catch (error) {
+        if (active) setBookingsError(error instanceof Error ? error.message : 'Unable to load bookings awaiting collection.');
+      } finally {
+        if (active) setBookingsLoading(false);
+      }
+    }
+    void loadBookingsAwaitingCollection();
+    return () => { active = false; };
+  }, []);
+
+  const openSampleFormForBooking = (booking: CreatedBooking) => {
+    const patient = patients.find((item) => item._id === booking.patientId);
+    setSampleForm({
+      bookingId: booking._id ?? '',
+      patientId: booking.patientId,
+      patientName: patient?.fullName ?? 'Patient name unavailable',
+      testDisplayName: booking.items.map((item) => item.name).join(', '),
+      sampleType: '',
+      priority: 'routine',
+    });
+    setShowCreateForm(true);
+    setCreateError('');
+  };
 
   const handleAdvance = async (sample: SampleDocument) => {
     setActionError(null);
@@ -127,6 +168,7 @@ export function SampleTracking() {
             <Input onChange={(event) => setSampleForm((current) => ({ ...current, patientId: event.target.value }))} placeholder="Patient ID" required value={sampleForm.patientId} />
             <Input onChange={(event) => setSampleForm((current) => ({ ...current, patientName: event.target.value }))} placeholder="Patient name" required value={sampleForm.patientName} />
             <Input onChange={(event) => setSampleForm((current) => ({ ...current, testDisplayName: event.target.value }))} placeholder="Test display name" required value={sampleForm.testDisplayName} />
+            <Input onChange={(event) => setSampleForm((current) => ({ ...current, sampleType: event.target.value }))} placeholder="Sample type (for example, Blood)" required value={sampleForm.sampleType} />
             <Select onChange={(event) => setSampleForm((current) => ({ ...current, priority: event.target.value as CreateSampleDto['priority'] }))} value={sampleForm.priority}>
               <option value="routine">Routine</option>
               <option value="urgent">Urgent</option>
@@ -136,6 +178,27 @@ export function SampleTracking() {
             {createError && <p className="text-sm text-danger md:col-span-2">{createError}</p>}
           </form>
         )}
+
+        <section className="card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div><h2 className="text-base font-semibold">Bookings awaiting sample collection</h2><p className="mt-1 text-sm text-ink-muted">Choose a booking to prefill a new collected sample.</p></div>
+            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{bookings.length} awaiting</span>
+          </div>
+          {bookingsError && <p className="text-sm text-danger">{bookingsError}</p>}
+          {bookingsLoading ? <p className="text-sm text-ink-muted">Loading bookings…</p> : bookings.length === 0 ? <p className="text-sm text-ink-muted">No pending or confirmed bookings await collection.</p> : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {bookings.map((booking) => {
+                const patient = patients.find((item) => item._id === booking.patientId);
+                return <article className="rounded-ui border border-border p-4" key={booking._id}>
+                  <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-ink">{patient?.fullName ?? 'Patient name unavailable'}</p><p className="mt-1 font-mono text-xs text-ink-muted">{booking.bookingId}</p></div><span className="rounded bg-muted px-2 py-1 text-xs font-medium capitalize text-ink-muted">{booking.status}</span></div>
+                  <p className="mt-3 text-sm text-ink-muted">{booking.items.map((item) => item.name).join(', ')}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{booking.scheduledDate.slice(0, 10)} · {booking.scheduledSlot}</p>
+                  <Button className="mt-4" onClick={() => openSampleFormForBooking(booking)} size="sm">Collect sample</Button>
+                </article>;
+              })}
+            </div>
+          )}
+        </section>
 
         {loadError && <p className="text-sm text-danger">{loadError}</p>}
         {loading ? (

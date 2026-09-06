@@ -20,7 +20,7 @@ export class PatientController {
 
   @Get()
   @InternalService()
-  @Roles('admin', 'receptionist', 'doctor')
+  @Roles('admin', 'receptionist', 'doctor', 'technician', 'lab_technician')
   @ApiOperation({ summary: 'List patient profiles, optionally filtered by name, patient ID, or mobile number' })
   findAll(@Query('search') search?: string) {
     return this.patientService.findAll(search);
@@ -53,7 +53,7 @@ export class PatientController {
   @ApiOperation({ summary: 'Get a patient profile by ID' })
   async findOne(@Param('id') id: string, @Req() request: any) {
     const patient = await this.patientService.findOne(id);
-    if (request.user.role === 'patient' && patient.userId !== request.user.userId) {
+    if (!request.internalService && request.user?.role === 'patient' && patient.userId !== request.user.userId) {
       throw new ForbiddenException('Patients may only access their own profile');
     }
     return patient;

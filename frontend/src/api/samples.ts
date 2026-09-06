@@ -11,6 +11,7 @@ export interface SampleDocument {
   patientId: string;
   patientName: string;
   testDisplayName: string;
+  sampleType: string;
   priority: SamplePriority;
   status: SampleStatus;
   handledBy: string;
@@ -31,6 +32,7 @@ export interface CreateSampleDto {
   patientId: string;
   patientName: string;
   testDisplayName: string;
+  sampleType: string;
   priority: SamplePriority;
   handledBy: string;
 }

@@ -71,6 +71,7 @@ export class ResultController {
   // =========================
   @Get()
   @InternalService()
+  @Roles('admin', 'technician', 'lab_technician', 'doctor')
   @ApiOperation({
     summary: 'Get all results',
   })
@@ -106,6 +107,7 @@ export class ResultController {
   // =========================
   @Get(':id')
   @InternalService()
+  @Roles('admin', 'technician', 'lab_technician', 'doctor')
   @ApiOperation({
     summary: 'Get result by ID',
   })
