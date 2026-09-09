@@ -23,11 +23,11 @@ import {
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationQueryDto } from './dto/notification-query.dto';
 import { NotificationService } from './notification.service';
-import { JwtAuthGuard, Public, Roles, RolesGuard } from './auth';
+import { InternalService, InternalServiceGuard, Public, Roles, RolesGuard } from './auth';
 
 @ApiTags('Notifications')
 @Controller('notifications')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(InternalServiceGuard, RolesGuard)
 @Roles('admin', 'doctor', 'receptionist', 'technician', 'lab_technician', 'patient')
 export class NotificationController {
   constructor(
@@ -45,6 +45,7 @@ export class NotificationController {
   }
 
   @Post()
+  @InternalService()
   @Roles('admin')
   @ApiOperation({
     summary: 'Create an in-app notification for a user or role',

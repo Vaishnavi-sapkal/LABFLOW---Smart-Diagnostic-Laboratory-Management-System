@@ -4,10 +4,12 @@ import { HydratedDocument } from 'mongoose';
 export const NOTIFICATION_ROLES = ['admin', 'doctor', 'receptionist', 'lab_technician', 'patient'] as const;
 export const NOTIFICATION_CATEGORIES = ['sample', 'verification', 'billing', 'registration', 'finance', 'report', 'booking'] as const;
 export const NOTIFICATION_PRIORITIES = ['normal', 'urgent'] as const;
+export const EMAIL_STATUSES = ['sent', 'failed', 'skipped'] as const;
 
 export type NotificationRole = (typeof NOTIFICATION_ROLES)[number];
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 export type NotificationPriority = (typeof NOTIFICATION_PRIORITIES)[number];
+export type EmailStatus = (typeof EMAIL_STATUSES)[number];
 export type NotificationDocument = HydratedDocument<Notification>;
 
 @Schema({ timestamps: true })
@@ -17,6 +19,9 @@ export class Notification {
 
   @Prop({ type: String, enum: NOTIFICATION_ROLES, index: true })
   role?: NotificationRole;
+
+  @Prop({ trim: true, lowercase: true })
+  recipientEmail?: string;
 
   @Prop({ required: true, trim: true })
   title!: string;
@@ -32,6 +37,12 @@ export class Notification {
 
   @Prop({ default: false, index: true })
   read!: boolean;
+
+  @Prop({ type: String, enum: EMAIL_STATUSES, default: 'skipped', index: true })
+  emailStatus!: EmailStatus;
+
+  @Prop({ trim: true })
+  emailError?: string;
 
   @Prop({ trim: true, index: true })
   relatedEntityId?: string;

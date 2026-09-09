@@ -39,7 +39,19 @@ type SampleSnapshot = {
   priority?: string;
 };
 
-type DoctorSnapshot = { _id: string; userId?: string; isActive?: boolean };
+type DoctorSnapshot = { _id: string; userId?: string; email?: string; isActive?: boolean };
+type PatientSnapshot = { _id: string; userId?: string; email?: string };
+type NotificationPayload = {
+  userId: string;
+  recipientEmail?: string;
+  role: 'doctor' | 'patient';
+  title: string;
+  message: string;
+  category: 'verification' | 'report';
+  priority: 'normal' | 'urgent';
+  relatedEntityId: string;
+  relatedEntityType: string;
+};
 type Actor = { userId: string; role: string };
 
 @Injectable()
@@ -61,7 +73,7 @@ export class VerificationService {
       throw new BadRequestException('Only submitted results can be sent for verification');
     }
 
-    await this.validateDoctor(doctorId);
+    const doctor = await this.validateDoctor(doctorId);
 
     const sample = await this.fetchSample(result.sampleId);
     const reportId = this.toReportId(sample.sampleId);
@@ -75,7 +87,7 @@ export class VerificationService {
       throw new BadRequestException('Submitted result is missing submittedAt');
     }
 
-    return this.verificationModel.create({
+    const verification = await this.verificationModel.create({
       reportId,
       resultId: dto.resultId,
       sampleId: result.sampleId,
@@ -89,6 +101,8 @@ export class VerificationService {
       submittedAt: new Date(result.submittedAt),
       status: 'pending',
     });
+    await this.sendDoctorVerificationNotification(verification, doctor);
+    return verification;
   }
 
   async findAll(filters?: { doctorId?: string; status?: string }, actor?: Actor) {
@@ -132,6 +146,7 @@ export class VerificationService {
       if (reportGenerated) {
         verification.reportGenerated = true;
         await verification.save();
+        await this.sendPatientReportNotification(verification);
       }
     }
 
@@ -154,9 +169,64 @@ export class VerificationService {
     return this.getRemote<SampleSnapshot>('SAMPLE_SERVICE_URL', 'samples', sampleId, 'Sample');
   }
 
-  private async validateDoctor(doctorId: string): Promise<void> {
+  private async validateDoctor(doctorId: string): Promise<DoctorSnapshot> {
     const doctor = await this.getRemote<DoctorSnapshot>('DOCTOR_SERVICE_URL', 'doctors', doctorId, 'Doctor');
     if (!doctor.isActive) throw new BadRequestException(`Doctor ${doctorId} is inactive and cannot receive verifications`);
+    return doctor;
+  }
+
+  private async sendDoctorVerificationNotification(verification: VerificationDocument, doctor: DoctorSnapshot) {
+    if (!doctor.userId) {
+      this.logger.error(`Notification not created for verification ${verification.id}: doctor profile ${verification.doctorId} has no linked auth userId`);
+      return;
+    }
+    await this.sendNotification({
+      userId: doctor.userId,
+      recipientEmail: doctor.email,
+      role: 'doctor',
+      title: 'Result awaiting verification',
+      message: `${verification.testName} result for ${verification.patientName} is awaiting your verification.`,
+      category: 'verification',
+      priority: verification.priority === 'urgent' ? 'urgent' : 'normal',
+      relatedEntityId: verification.id,
+      relatedEntityType: 'verification',
+    });
+  }
+
+  private async sendPatientReportNotification(verification: VerificationDocument) {
+    let patient: PatientSnapshot;
+    try {
+      patient = await this.getRemote<PatientSnapshot>('PATIENT_SERVICE_URL', 'patients', verification.patientId, 'Patient');
+    } catch (error) {
+      this.logger.error(`Patient notification could not resolve recipient for verification ${verification.id}`, error instanceof Error ? error.stack : String(error));
+      return;
+    }
+    if (!patient.userId) {
+      this.logger.warn(`Patient notification skipped for verification ${verification.id}: patient profile ${verification.patientId} has no linked auth userId`);
+      return;
+    }
+    await this.sendNotification({
+      userId: patient.userId,
+      recipientEmail: patient.email,
+      role: 'patient',
+      title: 'Report ready',
+      message: `Your laboratory report for ${verification.testName} is ready for download.`,
+      category: 'report',
+      priority: 'normal',
+      relatedEntityId: verification.id,
+      relatedEntityType: 'verification',
+    });
+  }
+
+  private async sendNotification(payload: NotificationPayload) {
+    const baseUrl = this.getBaseUrl('NOTIFICATION_SERVICE_URL');
+    this.logger.log(`Creating ${payload.role} notification: userId=${payload.userId}, recipientEmail=${payload.recipientEmail ?? 'none'}, relatedEntityId=${payload.relatedEntityId}`);
+    try {
+      await firstValueFrom(this.httpService.post(`${baseUrl}/notifications`, payload, { headers: this.internalHeaders() }));
+      this.logger.log(`${payload.role} notification accepted for userId=${payload.userId}`);
+    } catch (error) {
+      this.logger.error(`${payload.role} notification failed for userId=${payload.userId}`, error instanceof Error ? error.stack : String(error));
+    }
   }
 
   private async updateResultStatus(

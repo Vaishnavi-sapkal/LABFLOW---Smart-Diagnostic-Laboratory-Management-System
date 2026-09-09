@@ -1,5 +1,19 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { clearStoredSession, getCurrentUser, login as authenticate, type AuthenticatedUser } from '../api/auth';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import {
+  clearStoredSession,
+  getCurrentUser,
+  login as authenticate,
+  type AuthenticatedUser,
+} from '../api/auth';
+
 import type { Role } from '../types/labflow';
 
 const roleLanding: Record<Role, string> = {
@@ -15,6 +29,7 @@ interface AuthContextValue {
   setRole: (role: Role) => void;
   user: AuthenticatedUser | null;
   login: (email: string, password: string) => Promise<Role>;
+  logout: () => void;
   landingPath: string;
 }
 
@@ -32,18 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const restoreSession = async () => {
       try {
         const authenticatedUser = await getCurrentUser();
+
         if (!active) return;
 
         setRole(toRole(authenticatedUser.role));
         setUser(authenticatedUser);
       } catch {
         clearStoredSession();
-        if (active) setUser(null);
+
+        if (active) {
+          setUser(null);
+          setRole('Admin');
+        }
       }
     };
 
     void restoreSession();
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -56,13 +79,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authenticatedRole;
   };
 
-  const value = useMemo(() => ({ role, setRole, user, login, landingPath: roleLanding[role] }), [role, user]);
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const logout = () => {
+    clearStoredSession();
+    setUser(null);
+    setRole('Admin');
+  };
+
+  const value = useMemo(
+    () => ({
+      role,
+      setRole,
+      user,
+      login,
+      logout,
+      landingPath: roleLanding[role],
+    }),
+    [role, user],
+  );
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+
   return context;
 }
 
@@ -79,7 +127,10 @@ function toRole(role: string): Role {
   };
 
   const normalizedRole = roles[role.toLowerCase()];
-  if (!normalizedRole) throw new Error('Your account has an unsupported role.');
+
+  if (!normalizedRole) {
+    throw new Error('Your account has an unsupported role.');
+  }
 
   return normalizedRole;
 }

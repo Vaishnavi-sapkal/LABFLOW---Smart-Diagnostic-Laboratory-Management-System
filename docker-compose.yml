@@ -112,7 +112,9 @@ services:
       SAMPLE_SERVICE_URL: http://sample-service:3000
       DOCTOR_SERVICE_URL: http://doctor-service:3000
       REPORT_SERVICE_URL: http://report-service:3000
-    depends_on: [result-service, sample-service, doctor-service]
+      PATIENT_SERVICE_URL: http://patient-service:3000
+      NOTIFICATION_SERVICE_URL: http://notification-service:3000
+    depends_on: [result-service, sample-service, doctor-service, patient-service, notification-service]
 
   billing-service:
     build:

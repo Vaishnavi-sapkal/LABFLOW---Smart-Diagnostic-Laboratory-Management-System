@@ -166,7 +166,7 @@ export function PatientRegistration() {
           </FormSection>
           <FormSection title="Referral & Identification">
             <Field label="Referring Doctor"><Input value={form.referringDoctor} onChange={(event) => setForm((current) => ({ ...current, referringDoctor: event.target.value }))} /></Field>
-            <Field label="Government ID"><Input value={form.governmentId} onChange={(event) => setForm((current) => ({ ...current, governmentId: event.target.value }))} /></Field>
+            <Field label="Aadhaar ID"><Input value={form.governmentId} onChange={(event) => setForm((current) => ({ ...current, governmentId: event.target.value }))} /></Field>
             <Field label="Emergency Contact"><Input value={form.emergencyContact} onChange={(event) => setForm((current) => ({ ...current, emergencyContact: event.target.value }))} /></Field>
           </FormSection>
           <section className="card p-5">

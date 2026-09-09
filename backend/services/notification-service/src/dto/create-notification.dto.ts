@@ -5,7 +5,7 @@ import { NOTIFICATION_CATEGORIES, NOTIFICATION_PRIORITIES, NOTIFICATION_ROLES, N
 export class CreateNotificationDto {
   @ApiPropertyOptional({ description: 'Individual recipient ID. Either userId/recipientId or role is required.' }) @IsOptional() @IsString() @IsNotEmpty() userId?: string;
   @ApiPropertyOptional({ description: 'Alias for userId.' }) @IsOptional() @IsString() @IsNotEmpty() recipientId?: string;
-  @ApiPropertyOptional({ description: 'Email recipient. Used when category is report.' }) @IsOptional() @IsEmail() @IsNotEmpty() recipientEmail?: string;
+  @ApiPropertyOptional({ description: 'Recipient email. A saved notification is emailed when SMTP is configured.' }) @IsOptional() @IsEmail() @IsNotEmpty() recipientEmail?: string;
   @ApiPropertyOptional({ enum: NOTIFICATION_ROLES }) @IsOptional() @IsEnum(NOTIFICATION_ROLES) role?: NotificationRole;
   @ApiProperty({ example: 'Sample collection is overdue' }) @IsString() @IsNotEmpty() @MaxLength(160) title!: string;
   @ApiProperty({ example: 'Sample SMP-2408-014 has not been collected within its scheduled window.' }) @IsString() @IsNotEmpty() @MaxLength(2000) message!: string;

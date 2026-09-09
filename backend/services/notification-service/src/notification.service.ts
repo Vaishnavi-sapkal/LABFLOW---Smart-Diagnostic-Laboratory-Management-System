@@ -18,16 +18,29 @@ export class NotificationService {
   async create(dto: CreateNotificationDto) {
     const userId = dto.userId ?? dto.recipientId;
     if (!userId && !dto.role) throw new BadRequestException('Either userId (or recipientId) or role is required');
-    const notification = await this.notificationModel.create({ ...dto, userId, recipientId: undefined, recipientEmail: undefined });
+    this.logger.log(`Notification request: userId=${userId ?? 'role-audience'}, role=${dto.role ?? 'none'}, recipientEmail=${dto.recipientEmail ?? 'none'}`);
 
-    if (dto.category === 'report' && dto.recipientEmail) {
-      try {
-        await this.emailService.sendReportNotification(notification, dto.recipientEmail);
-      } catch (error) {
-        this.logger.error(`Unable to send report notification email to ${dto.recipientEmail}`, error instanceof Error ? error.stack : undefined);
-      }
+    let notification: NotificationDocument;
+    try {
+      notification = await this.notificationModel.create({ ...dto, userId, recipientId: undefined, emailStatus: 'skipped' });
+      this.logger.log(`Notification persisted: id=${notification.id}, userId=${notification.userId ?? 'role-audience'}, role=${notification.role ?? 'none'}`);
+    } catch (error) {
+      this.logger.error('Notification persistence failed', error instanceof Error ? error.stack : String(error));
+      throw error;
     }
 
+    if (dto.recipientEmail) {
+      const delivery = await this.emailService.sendNotification(notification, dto.recipientEmail);
+      notification.emailStatus = delivery.status;
+      notification.emailError = delivery.status === 'failed' ? delivery.error : undefined;
+      try {
+        await notification.save();
+        this.logger.log(`Notification email status persisted: id=${notification.id}, status=${delivery.status}`);
+      } catch (error) {
+        this.logger.error(`Notification email status persistence failed: id=${notification.id}`, error instanceof Error ? error.stack : String(error));
+        throw error;
+      }
+    }
     return notification;
   }
 

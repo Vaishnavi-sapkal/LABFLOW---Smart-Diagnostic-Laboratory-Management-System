@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtStrategy } from './auth';
+import { InternalServiceGuard, JwtStrategy } from './auth';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -33,6 +33,6 @@ import { EmailService } from './email.service';
 
   controllers: [NotificationController],
 
-  providers: [NotificationService, EmailService, JwtStrategy],
+  providers: [NotificationService, EmailService, JwtStrategy, InternalServiceGuard],
 })
 export class NotificationModule {}
