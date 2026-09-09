@@ -1,295 +1,249 @@
-import { useState } from 'react';
-import { Check, ChevronLeft, FlaskConical } from 'lucide-react';
+import { FormEvent, useState } from 'react';
+import {
+  ArrowRight,
+  LockKeyhole,
+  Mail,
+  TestTubeDiagonal,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { roleLanding, useAuth } from '../app/AuthContext';
-import type { Role } from '../types/labflow';
 
-type LoginStep = 'role' | 'credentials';
+import { useAuth } from '../app/AuthContext';
 
-interface RoleOption {
-  id: Role;
-  label: string;
-  description: string;
-  icon: string;
-  colorVar: string;
-  bgVar: string;
-  placeholder: string;
-}
-
-const roles: RoleOption[] = [
-  {
-    id: 'Admin',
-    label: 'Administrator',
-    description: 'Full system access & configuration',
-    icon: '⚙',
-    colorVar: '--role-admin',
-    bgVar: '--role-admin-bg',
-    placeholder: 'admin@labflow.in',
-  },
-  {
-    id: 'Doctor',
-    label: 'Doctor',
-    description: 'Review results & sign-off reports',
-    icon: '🩺',
-    colorVar: '--role-doctor',
-    bgVar: '--role-doctor-bg',
-    placeholder: 'doctor@labflow.in',
-  },
-  {
-    id: 'Receptionist',
-    label: 'Receptionist',
-    description: 'Patient registration & billing',
-    icon: '🗂',
-    colorVar: '--role-receptionist',
-    bgVar: '--role-receptionist-bg',
-    placeholder: 'receptionist@labflow.in',
-  },
-  {
-    id: 'Lab Technician',
-    label: 'Lab Technician',
-    description: 'Sample processing & result entry',
-    icon: '🔬',
-    colorVar: '--role-technician',
-    bgVar: '--role-technician-bg',
-    placeholder: 'technician@labflow.in',
-  },
-  {
-    id: 'Patient',
-    label: 'Patient',
-    description: 'View reports & booking history',
-    icon: '👤',
-    colorVar: '--role-patient',
-    bgVar: '--role-patient-bg',
-    placeholder: 'patient@email.com',
-  },
-];
-
-const features = [
-  'End-to-end test lifecycle management',
-  'Real-time sample tracking & status updates',
-  'Automated report generation with digital sign-off',
-  'Role-based access for complete audit trails',
-];
-
-const stats = [
-  ['12,400+', 'Tests/month'],
-  ['99.8%', 'Uptime'],
-  ['<4 min', 'Avg turnaround'],
-];
+const LOGIN_TIMEOUT_MS = 15000;
 
 export function Login() {
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [step, setStep] = useState<LoginStep>('role');
+  const navigate = useNavigate();
+  const { login, landingPath } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { setRole } = useAuth();
-  const navigate = useNavigate();
-  const selected = roles.find((role) => role.id === selectedRole);
+  const [error, setError] = useState('');
 
-  const handleContinue = () => {
-    if (selectedRole) setStep('credentials');
-  };
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
 
-  const handleLogin = () => {
-    if (!selectedRole || loading) return;
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email address and password.');
+      return;
+    }
+
     setLoading(true);
-    window.setTimeout(() => {
-      setRole(selectedRole);
+
+    let timeoutId: number | undefined;
+
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        reject(
+          new Error(
+            'Sign in is taking too long. Please check your connection and try again.',
+          ),
+        );
+      }, LOGIN_TIMEOUT_MS);
+    });
+
+    try {
+      await Promise.race([login(email.trim(), password), timeout]);
+      navigate(landingPath, { replace: true });
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : 'Unable to sign in. Please try again.',
+      );
+    } finally {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+
       setLoading(false);
-      navigate(roleLanding[selectedRole]);
-    }, 900);
+    }
   };
 
   return (
-    <main className="flex min-h-screen overflow-hidden bg-surface-muted">
-      <section className="relative hidden w-[45%] min-w-[440px] flex-col overflow-hidden bg-sidebar p-12 text-white lg:flex">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.04]">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div
-              className="absolute rounded-full border border-white"
-              key={index}
-              style={{
-                width: `${(index + 1) * 120}px`,
-                height: `${(index + 1) * 120}px`,
-                left: '50%',
-                top: '60%',
-                transform: 'translate(-50%, -50%)',
-              }}
-            />
-          ))}
-        </div>
+    <main className="flex min-h-screen items-center justify-center overflow-x-hidden bg-[#f4f7fb] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+      <div className="w-full max-w-[900px]">
+        <section className="grid w-full overflow-hidden border border-[#d8e2ec] bg-white shadow-[0_16px_38px_rgba(15,35,60,0.10)] lg:grid-cols-2">
 
-        <div className="relative z-[1]">
-          <div className="mb-16 flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-[10px] bg-gradient-to-br from-brand-600 to-accent">
-              <FlaskConical size={20} />
-            </div>
-            <div>
-              <div className="text-[22px] font-extrabold leading-tight tracking-[-0.5px]">LabFlow</div>
-              <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.09em] text-[rgb(var(--sidebar-logo-muted))]">Smart Diagnostics</div>
-            </div>
-          </div>
+          {/* LEFT BRANDING PANEL */}
+          <div className="relative flex min-h-[360px] flex-col justify-between overflow-hidden bg-[#0b2945] px-6 py-7 text-white sm:min-h-[420px] sm:px-9 sm:py-8 lg:min-h-[530px] lg:px-10">
 
-          <h1 className="mb-4 text-[32px] font-extrabold leading-[1.2] tracking-[-0.8px]">
-            Diagnostic excellence,
-            <br />
-            digitally delivered.
-          </h1>
-          <p className="mb-12 max-w-[430px] text-[15px] leading-[1.7] text-[rgb(var(--login-panel-copy))]">
-            From patient registration to verified lab reports, LabFlow connects every step of your diagnostic workflow in one secure platform.
-          </p>
+            {/* Square background patterns */}
+            <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 border border-white/[0.08]" />
+            <div className="pointer-events-none absolute -bottom-28 -left-24 h-64 w-64 border border-white/[0.08]" />
+            <div className="pointer-events-none absolute right-5 top-1/2 h-32 w-32 border border-white/[0.05]" />
 
-          <div className="grid gap-3.5">
-            {features.map((feature) => (
-              <div className="flex items-center gap-2.5" key={feature}>
-                <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-accent/40 bg-accent/20 text-accent">
-                  <Check size={11} strokeWidth={3} />
-                </div>
-                <span className="text-[13.5px] text-[rgb(var(--sidebar-text))]">{feature}</span>
+            {/* LOGO */}
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center bg-[#08a6c8]">
+                <TestTubeDiagonal
+                  size={22}
+                  strokeWidth={1.8}
+                  className="text-white"
+                />
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="relative z-[1] mt-auto flex gap-8">
-          {stats.map(([value, label]) => (
-            <div key={label}>
-              <div className="text-xl font-extrabold text-white">{value}</div>
-              <div className="text-xs text-[rgb(var(--sidebar-logo-muted))]">{label}</div>
+              <div>
+                <h1 className="text-[18px] font-bold leading-none tracking-[0.02em]">
+                  LabFlow
+                </h1>
+
+                <p className="mt-1 text-[8px] font-medium uppercase tracking-[0.22em] text-[#6da8c0]">
+                  Diagnostics
+                </p>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      <section className="flex flex-1 items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-[480px]">
-          {step === 'role' ? (
-            <>
+            {/* BRANDING CONTENT */}
+            <div className="relative z-10 mt-12 lg:mt-14">
+              <div className="mb-4 h-[2px] w-11 bg-[#2ca6c9]" />
+
+              <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#76c8dc] sm:text-[10px]">
+                Smart Laboratory Platform
+              </p>
+
+              <h2 className="max-w-[350px] text-[28px] font-bold leading-[1.18] tracking-[-0.7px] sm:text-[34px] lg:text-[36px]">
+                Smarter diagnostics.
+                <br />
+                Better care.
+              </h2>
+
+              <p className="mt-5 max-w-[320px] text-[12px] leading-6 text-white/65 sm:text-[13px]">
+                Manage patients, laboratory tests, samples, results and
+                reports through one secure and connected platform.
+              </p>
+            </div>
+
+            {/* FOOTER */}
+            <div className="relative z-10 mt-10 flex items-center gap-3 text-[10px] text-white/45">
+              <span className="h-1.5 w-1.5 shrink-0 bg-[#2ca6c9]" />
+              Secure laboratory operations
+            </div>
+          </div>
+
+          {/* RIGHT LOGIN PANEL */}
+          <div className="flex min-h-[440px] items-center bg-white px-6 py-9 sm:px-9 sm:py-10 lg:min-h-[530px] lg:px-10">
+            <div className="mx-auto w-full max-w-[380px]">
+
+              {/* HEADING */}
               <div className="mb-8">
-                <h2 className="mb-1.5 text-2xl font-extrabold tracking-[-0.5px] text-ink">Welcome back</h2>
-                <p className="text-sm text-ink-muted">Select your role to continue</p>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.13em] text-[#1682a9]">
+                  Welcome back
+                </p>
+
+                <h2 className="text-[28px] font-bold leading-tight tracking-[-0.7px] text-[#172536] sm:text-[31px]">
+                  Sign in to your account
+                </h2>
+
+                <p className="mt-3 text-[13px] leading-5 text-[#7d8c9d]">
+                  Enter your credentials to access your laboratory workspace.
+                </p>
               </div>
 
-              <div className="mb-7 flex flex-col gap-2.5">
-                {roles.map((role) => {
-                  const active = selectedRole === role.id;
-                  return (
-                    <button
-                      className="flex w-full items-center gap-3.5 rounded-[10px] border-2 p-3.5 text-left transition"
-                      key={role.id}
-                      onClick={() => setSelectedRole(role.id)}
-                      style={{
-                        borderColor: active ? `rgb(var(${role.colorVar}))` : 'rgb(var(--color-border))',
-                        background: active ? `rgb(var(${role.bgVar}))` : 'rgb(var(--color-surface))',
-                      }}
-                      type="button"
-                    >
-                      <span
-                        className="grid h-10 w-10 shrink-0 place-items-center rounded-ui border text-lg"
-                        style={{
-                          background: `rgb(var(${role.bgVar}))`,
-                          borderColor: `rgb(var(${role.colorVar}) / 0.13)`,
-                        }}
-                      >
-                        {role.icon}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-ink">{role.label}</span>
-                        <span className="mt-px block text-xs text-ink-muted">{role.description}</span>
-                      </span>
-                      {active ? (
-                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white" style={{ background: `rgb(var(${role.colorVar}))` }}>
-                          <Check size={11} strokeWidth={3} />
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* LOGIN FORM */}
+              <form onSubmit={handleSubmit} className="space-y-5">
 
-              <button
-                className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold transition disabled:cursor-not-allowed"
-                disabled={!selectedRole}
-                onClick={handleContinue}
-                type="button"
-              >
-                <span className={selectedRole ? 'grid h-full place-items-center rounded-[10px] bg-brand-600 text-white' : 'grid h-full place-items-center rounded-[10px] bg-border text-ink-muted'}>
-                  Continue →
-                </span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="mb-6 flex items-center gap-1.5 p-0 text-[13px] text-ink-muted" onClick={() => setStep('role')} type="button">
-                <ChevronLeft size={14} />
-                Back to role selection
-              </button>
+                {/* EMAIL */}
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="mb-2 block text-[12px] font-bold uppercase tracking-[0.04em] text-[#344557]"
+                  >
+                    Email Address
+                  </label>
 
-              {selected ? (
-                <div
-                  className="mb-7 flex items-center gap-3 rounded-[10px] border p-3"
-                  style={{
-                    background: `rgb(var(${selected.bgVar}))`,
-                    borderColor: `rgb(var(${selected.colorVar}) / 0.20)`,
-                  }}
-                >
-                  <span className="text-xl">{selected.icon}</span>
-                  <div>
-                    <div className="text-sm font-semibold text-ink">Signing in as {selected.label}</div>
-                    <div className="text-xs text-ink-muted">{selected.description}</div>
+                  <div className="relative">
+                    <Mail
+                      size={18}
+                      strokeWidth={1.8}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8494a5]"
+                    />
+
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="Enter your email address"
+                      className="h-12 w-full border border-[#d7e1eb] bg-[#f8fafc] pl-12 pr-4 text-[13px] text-[#243447] outline-none transition placeholder:text-[#9aa8b6] focus:border-[#1682a9] focus:bg-white focus:ring-2 focus:ring-[#1682a9]/10"
+                    />
                   </div>
                 </div>
-              ) : null}
 
-              <h2 className="mb-6 text-2xl font-extrabold tracking-[-0.5px] text-ink">Sign in to LabFlow</h2>
+                {/* PASSWORD */}
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-[12px] font-bold uppercase tracking-[0.04em] text-[#344557]"
+                  >
+                    Password
+                  </label>
 
-              <div className="mb-4">
-                <label className="mb-1.5 block text-[13px] font-semibold text-ink" htmlFor="email">Email address</label>
-                <input
-                  className="h-[44px] w-full rounded-ui border-[1.5px] border-border bg-white px-3.5 text-sm text-ink outline-none focus:border-brand-600"
-                  id="email"
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder={selected?.placeholder ?? 'admin@labflow.in'}
-                  type="email"
-                  value={email}
-                />
-              </div>
+                  <div className="relative">
+                    <LockKeyhole
+                      size={18}
+                      strokeWidth={1.8}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8494a5]"
+                    />
 
-              <div className="mb-6">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-[13px] font-semibold text-ink" htmlFor="password">Password</label>
-                  <a className="text-xs text-brand-600" href="#">Forgot password?</a>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Enter your password"
+                      className="h-12 w-full border border-[#d7e1eb] bg-[#f8fafc] pl-12 pr-4 text-[13px] text-[#243447] outline-none transition placeholder:text-[#9aa8b6] focus:border-[#1682a9] focus:bg-white focus:ring-2 focus:ring-[#1682a9]/10"
+                    />
+                  </div>
                 </div>
-                <input
-                  className="h-[44px] w-full rounded-ui border-[1.5px] border-border bg-white px-3.5 text-sm text-ink outline-none focus:border-brand-600"
-                  id="password"
-                  onChange={(event) => setPassword(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') handleLogin();
-                  }}
-                  placeholder="••••••••"
-                  type="password"
-                  value={password}
-                />
+
+                {/* ERROR MESSAGE */}
+                {error && (
+                  <div
+                    role="alert"
+                    className="border border-[#f1caca] bg-[#fff5f5] px-4 py-3 text-[12px] leading-5 text-[#c24141]"
+                  >
+                    {error}
+                  </div>
+                )}
+
+                {/* SIGN IN BUTTON */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-1 flex h-12 w-full items-center justify-center gap-2 bg-[#087eae] text-[13px] font-bold tracking-[0.02em] text-white transition hover:bg-[#066f9b] focus:outline-none focus:ring-2 focus:ring-[#087eae]/30 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {loading ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin border-2 border-white/40 border-t-white" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      <span>Sign In</span>
+                      <ArrowRight size={17} strokeWidth={2} />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* FOOTER */}
+              <div className="mt-8 border-t border-[#edf1f5] pt-5">
+                <p className="text-center text-[11px] text-[#9aa7b5]">
+                  Authorized laboratory personnel only
+                </p>
               </div>
 
-              <button
-                className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold transition"
-                disabled={loading}
-                onClick={handleLogin}
-                type="button"
-              >
-                <span className={loading ? 'grid h-full place-items-center rounded-[10px] bg-[rgb(var(--color-muted))] text-ink-muted' : 'grid h-full place-items-center rounded-[10px] bg-brand-600 text-white'}>
-                  {loading ? 'Signing in…' : 'Sign in'}
-                </span>
-              </button>
+            </div>
+          </div>
 
-              <p className="mt-4 text-center text-xs text-ink-muted">Protected by 256-bit TLS encryption · HIPAA compliant</p>
-            </>
-          )}
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }

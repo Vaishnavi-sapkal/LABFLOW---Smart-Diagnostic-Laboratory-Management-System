@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Clock3, Plus, Search, UserRound, X } from 'lucide-react';
-import { useLabData } from '../app/LabDataContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageContainer } from '../components/layout/PageContainer';
-import { doctors, formatInr } from '../data/mockData';
+import { formatInr } from '../lib/currency';
+import { listDoctors, type DoctorDocument } from '../api/doctors';
+import { getSavings, listTests, type TestDocument } from '../api/tests';
+import { BookingRequestError, createBooking, getAvailability, getPendingCounts, type CreatedBooking, type SlotAvailability } from '../api/bookings';
+import { listPatients, type CreatedPatient } from '../api/patients';
 
 type CatalogTest = {
   id: string;
@@ -23,44 +26,170 @@ type TestPackage = {
   savings: number;
 };
 
-const catalogTests: CatalogTest[] = [
-  { id: 'CBC', name: 'Complete Blood Count', category: 'Hematology', price: 480, duration: '4h', fasting: false },
-  { id: 'LFT', name: 'Liver Function Test', category: 'Biochemistry', price: 850, duration: '6h', fasting: true },
-  { id: 'KFT', name: 'Kidney Function Test', category: 'Biochemistry', price: 780, duration: '6h', fasting: true },
-  { id: 'LIPID', name: 'Lipid Profile', category: 'Biochemistry', price: 760, duration: '6h', fasting: true },
-  { id: 'TFT', name: 'Thyroid Function (T3/T4/TSH)', category: 'Endocrinology', price: 890, duration: '8h', fasting: false },
-  { id: 'HBA1C', name: 'HbA1c (Glycated Hemoglobin)', category: 'Endocrinology', price: 580, duration: '4h', fasting: false },
-  { id: 'FBS', name: 'Fasting Blood Sugar', category: 'Biochemistry', price: 180, duration: '2h', fasting: true },
-  { id: 'PPBS', name: 'Post-Prandial Blood Sugar', category: 'Biochemistry', price: 180, duration: '2h', fasting: false },
-  { id: 'VIT_D', name: 'Vitamin D (25-OH)', category: 'Vitamins', price: 1200, duration: '24h', fasting: false },
-  { id: 'VIT_B12', name: 'Vitamin B12', category: 'Vitamins', price: 980, duration: '24h', fasting: false },
-  { id: 'CRP', name: 'C-Reactive Protein', category: 'Immunology', price: 560, duration: '6h', fasting: false },
-  { id: 'ESR', name: 'ESR (Erythrocyte Sedimentation Rate)', category: 'Hematology', price: 220, duration: '2h', fasting: false },
-];
+function todayIsoDate() {
+  const today = new Date();
+  const localTime = new Date(today.getTime() - (today.getTimezoneOffset() * 60_000));
+  return localTime.toISOString().slice(0, 10);
+}
 
-const packages: TestPackage[] = [
-  { id: 'PKG_FULL', name: 'Full Body Checkup', tests: ['CBC', 'LFT', 'KFT', 'LIPID', 'TFT', 'FBS', 'VIT_D', 'VIT_B12'], price: 3999, savings: 1831 },
-  { id: 'PKG_DIAB', name: 'Diabetes Profile', tests: ['HBA1C', 'FBS', 'PPBS', 'KFT', 'LIPID'], price: 1499, savings: 681 },
-  { id: 'PKG_CARDIAC', name: 'Cardiac Risk Panel', tests: ['LIPID', 'CRP', 'CBC', 'FBS'], price: 1299, savings: 421 },
-];
-
-const categories = ['All', 'Hematology', 'Biochemistry', 'Endocrinology', 'Vitamins', 'Immunology'];
-const slots = ['08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM', '03:00 PM', '04:00 PM'];
-const unavailableSlots = new Set(['08:00 AM', '08:30 AM', '10:30 AM']);
+function calculateAge(dateOfBirth: string): number {
+  const dob = new Date(dateOfBirth);
+  const diff = Date.now() - dob.getTime();
+  return Math.abs(new Date(diff).getUTCFullYear() - 1970);
+}
 
 export function TestBooking() {
-  const { addBooking, bookings, patients } = useLabData();
+  const [patients, setPatients] = useState<CreatedPatient[]>([]);
+  const [testDocuments, setTestDocuments] = useState<TestDocument[]>([]);
+  const [doctorDocuments, setDoctorDocuments] = useState<DoctorDocument[]>([]);
+  const [packageSavings, setPackageSavings] = useState<Record<string, number>>({});
+  const [slotAvailability, setSlotAvailability] = useState<SlotAvailability[]>([]);
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
+  const [dataError, setDataError] = useState('');
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<string[]>(['CBC']);
+  const [cart, setCart] = useState<string[]>([]);
+  const [scheduledDate, setScheduledDate] = useState(todayIsoDate);
   const [selectedSlot, setSelectedSlot] = useState('09:00 AM');
   const [activeTab, setActiveTab] = useState<'tests' | 'packages'>('tests');
-  const [selectedDoctorId, setSelectedDoctorId] = useState(doctors[0]?.id ?? '');
-  const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? '');
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?._id ?? '');
   const [showPatientSelect, setShowPatientSelect] = useState(false);
-  const [bookedId, setBookedId] = useState<string | null>(null);
+  const [createdBooking, setCreatedBooking] = useState<CreatedBooking | null>(null);
+  const [bookingError, setBookingError] = useState('');
   const [category, setCategory] = useState('All');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
 
-  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
+  useEffect(() => {
+    let active = true;
+
+    async function loadCatalog() {
+      try {
+        const [doctors, loadedPatients] = await Promise.all([listDoctors(), listPatients()]);
+        if (!active) return;
+
+        setDoctorDocuments(doctors);
+        setPatients(loadedPatients);
+        setSelectedDoctorId((current) => current || doctors.find((doctor) => doctor.isActive !== false)?._id || '');
+        setSelectedPatientId((current) => current || loadedPatients[0]?._id || '');
+      } catch (error) {
+        if (active) setDataError(error instanceof Error ? error.message : 'Unable to load booking data. Please try again.');
+      }
+    }
+
+    void loadCatalog();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void listPatients(patientSearch.trim() || undefined)
+        .then((loadedPatients) => {
+          if (!active) return;
+          setPatients(loadedPatients);
+          setSelectedPatientId((current) => loadedPatients.some((patient) => patient._id === current) ? current : loadedPatients[0]?._id || '');
+        })
+        .catch((error) => { if (active) setDataError(error instanceof Error ? error.message : 'Unable to search patients.'); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [patientSearch]);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void listTests({ search: search.trim() || undefined, category: category === 'All' ? undefined : category })
+        .then((tests) => {
+          if (!active) return;
+          setTestDocuments(tests);
+          if (category === 'All') setCategories([...new Set(tests.filter((test) => !test.isPackage).map((test) => test.category))]);
+        })
+        .catch((error) => { if (active) setDataError(error instanceof Error ? error.message : 'Unable to search tests.'); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [search, category]);
+
+  useEffect(() => {
+    let active = true;
+    const packageIds = testDocuments.filter((test) => test.isPackage).map((test) => test._id);
+
+    const loadPackageSavings = async () => {
+      try {
+        const savings = await Promise.all(packageIds.map(async (id) => [id, (await getSavings(id)).savings] as const));
+        if (active) setPackageSavings(Object.fromEntries(savings));
+      } catch {
+        if (active) setPackageSavings({});
+      }
+    };
+
+    void loadPackageSavings();
+    return () => { active = false; };
+  }, [testDocuments]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPendingCounts = async () => {
+      try {
+        const counts = await getPendingCounts();
+        if (active) setPendingCounts(Object.fromEntries(counts.map(({ doctorId, pendingCount }) => [doctorId, pendingCount])));
+      } catch {
+        if (active) setPendingCounts({});
+      }
+    };
+
+    void loadPendingCounts();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDoctorId) {
+      setSlotAvailability([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadAvailability = async () => {
+      try {
+        const availability = await getAvailability(scheduledDate, selectedDoctorId);
+        if (!active) return;
+        setSlotAvailability(availability);
+        setSelectedSlot((current) => availability.find((item) => item.slot === current && item.available)?.slot ?? availability.find((item) => item.available)?.slot ?? '');
+      } catch {
+        if (active) setSlotAvailability([]);
+      }
+    };
+
+    void loadAvailability();
+    return () => { active = false; };
+  }, [scheduledDate, selectedDoctorId]);
+
+  const catalogTests: CatalogTest[] = testDocuments
+    .filter((test) => !test.isPackage)
+    .map((test) => ({
+      id: test._id,
+      name: test.name,
+      category: test.category,
+      price: test.price,
+      duration: `${test.turnaroundHours}h`,
+      fasting: Boolean(test.fastingRequired),
+    }));
+  const packages: TestPackage[] = testDocuments
+    .filter((test) => test.isPackage)
+    .map((test) => {
+      const tests = test.includedTestIds ?? [];
+      return {
+        id: test._id,
+        name: test.name,
+        tests,
+        price: test.price,
+        savings: packageSavings[test._id] ?? 0,
+      };
+    });
+  const categoryOptions = ['All', ...categories];
+
+  const selectedPatient = patients.find((patient) => patient._id === selectedPatientId) ?? patients[0];
   const cartItems = catalogTests.filter((test) => cart.includes(test.id));
   const filteredTests = catalogTests.filter((test) => {
     const matchesCategory = category === 'All' || test.category === category;
@@ -73,23 +202,34 @@ export function TestBooking() {
   const toggleCart = (id: string) => setCart((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const addPackage = (pkg: TestPackage) => setCart((current) => [...new Set([...current, ...pkg.tests])]);
 
-  const handleConfirm = () => {
-    if (!cart.length || !selectedPatient) return;
+  const handleConfirm = async () => {
+    if (!cart.length || !selectedPatient || !selectedDoctorId) {
+      setBookingError('Select a patient, an active doctor, and at least one test before confirming.');
+      return;
+    }
 
-    const bookingId = `BK-2026-${String(834 + bookings.length).padStart(4, '0')}`;
-    addBooking({
-      id: bookingId,
-      patientId: selectedPatient.id,
-      testIds: cart,
-      doctorId: selectedDoctorId,
-      status: 'Sample collected',
-      slot: `19 Aug, ${selectedSlot}`,
-      amount: catalogTotal,
-    });
-    setBookedId(bookingId);
+    setBookingError('');
+    try {
+      const booking = await createBooking({
+        patientId: selectedPatientId,
+        doctorId: selectedDoctorId,
+        testIds: cart,
+        scheduledDate,
+        scheduledSlot: selectedSlot,
+      });
+
+      setCreatedBooking(booking);
+    } catch (error) {
+      if (error instanceof BookingRequestError && error.status === 409) {
+        setBookingError('This doctor is already booked for that time. Please pick a different slot.');
+        return;
+      }
+
+      setBookingError(error instanceof Error ? error.message : 'Unable to create booking. Please try again.');
+    }
   };
 
-  if (bookedId) {
+  if (createdBooking) {
     return (
       <PageContainer>
         <div className="flex justify-center px-2 py-8 lg:py-12">
@@ -98,13 +238,14 @@ export function TestBooking() {
               <Check size={30} strokeWidth={3} />
             </div>
             <h1 className="mb-2 text-[22px] font-extrabold leading-tight text-ink">Tests Booked Successfully!</h1>
-            <p className="mb-6 text-sm leading-6 text-ink-muted">Booking confirmed for {selectedSlot} today. Sample collection instructions sent to patient.</p>
+            <p className="mb-6 text-sm leading-6 text-ink-muted">Booking confirmed for {createdBooking.scheduledSlot} on {createdBooking.scheduledDate.slice(0, 10)}. Sample collection instructions sent to patient.</p>
             <div className="mb-5 rounded-card bg-muted px-5 py-4 text-left">
               <div className="mb-1 font-mono text-xs text-ink-muted">BOOKING ID</div>
-              <div className="font-mono text-lg font-bold text-brand-600">{bookedId.replace('BK-2026-', 'LF-BK-')}</div>
+              <div className="font-mono text-lg font-bold text-brand-600">{createdBooking.bookingId}</div>
+              <div className="mt-2 text-sm font-semibold text-ink">Total amount: {formatInr(createdBooking.totalAmount)}</div>
             </div>
             <div className="flex justify-center gap-2.5">
-              <Button variant="secondary" onClick={() => setBookedId(null)}>New Booking</Button>
+              <Button variant="secondary" onClick={() => setCreatedBooking(null)}>New Booking</Button>
               <Button>Generate Bill</Button>
             </div>
           </div>
@@ -119,6 +260,7 @@ export function TestBooking() {
         <header>
           <h1 className="mb-1 text-[22px] font-extrabold leading-tight text-ink">Test Booking</h1>
           <p className="text-[13.5px] text-ink-muted">Search and select tests or packages, assign a doctor, and schedule a collection slot</p>
+          {dataError && <p className="mt-2 text-sm text-danger">{dataError}</p>}
         </header>
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -129,21 +271,15 @@ export function TestBooking() {
                   <UserRound size={17} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold text-ink">{selectedPatient?.name ?? 'Select patient'}</div>
+                  <div className="truncate text-sm font-bold text-ink">{selectedPatient?.fullName ?? 'Select patient'}</div>
                   <div className="truncate text-xs text-ink-muted">
-                    {selectedPatient ? `${selectedPatient.id} | ${selectedPatient.age}y ${selectedPatient.gender} | ${selectedPatient.bloodGroup}` : 'No patient selected'}
+                    {selectedPatient ? `${selectedPatient.patientId} | ${calculateAge(selectedPatient.dateOfBirth)}y ${selectedPatient.gender} | ${selectedPatient.bloodGroup ?? 'N/A'}` : 'No patient selected'}
                   </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setShowPatientSelect((value) => !value)}>Change Patient</Button>
               </div>
               {showPatientSelect && (
-                <select
-                  className="focus-ring mt-3 h-9 w-full rounded-ui border border-border bg-white px-3 text-sm text-ink"
-                  onChange={(event) => setSelectedPatientId(event.target.value)}
-                  value={selectedPatientId}
-                >
-                  {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name}</option>)}
-                </select>
+                <div className="mt-3 grid gap-2"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" size={14} /><Input aria-label="Search patients" className="h-9 pl-8 text-sm" onChange={(event) => setPatientSearch(event.target.value)} placeholder="Search name, patient ID, or mobile" value={patientSearch} /></div><select className="focus-ring h-9 w-full rounded-ui border border-border bg-white px-3 text-sm text-ink" onChange={(event) => setSelectedPatientId(event.target.value)} value={selectedPatientId}>{patients.map((patient) => <option key={patient._id} value={patient._id}>{patient.fullName} · {patient.patientId} · {patient.mobile}</option>)}</select></div>
               )}
             </div>
 
@@ -168,7 +304,7 @@ export function TestBooking() {
                     <Input className="h-9 rounded-[7px] pl-8 text-[13px]" onChange={(event) => setSearch(event.target.value)} placeholder="Search tests..." value={search} />
                   </div>
                   <div className="flex gap-1.5 overflow-x-auto pb-1 lg:pb-0">
-                    {categories.map((item) => (
+                    {categoryOptions.map((item) => (
                       <button
                         className={`h-9 whitespace-nowrap rounded-md border px-3 text-[11.5px] font-semibold transition ${category === item ? 'border-brand-600 bg-brand-50 text-brand-600' : 'border-border bg-white text-ink-muted hover:bg-surface-muted'}`}
                         key={item}
@@ -216,11 +352,12 @@ export function TestBooking() {
 
           <aside className="grid h-fit gap-4 xl:sticky xl:top-24">
             <CartPanel cartItems={cartItems} onRemove={toggleCart} total={catalogTotal} />
-            <DoctorPanel selectedDoctorId={selectedDoctorId} onSelect={setSelectedDoctorId} />
-            <SlotPanel selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
+            <DoctorPanel doctors={doctorDocuments.filter((doctor) => doctor.isActive !== false)} pendingCounts={pendingCounts} selectedDoctorId={selectedDoctorId} onSelect={setSelectedDoctorId} />
+            <SlotPanel availability={slotAvailability} scheduledDate={scheduledDate} onDateChange={setScheduledDate} selectedSlot={selectedSlot} onSelect={setSelectedSlot} />
             <Button className="h-[46px] w-full rounded-card text-[15px] font-bold" disabled={!cart.length} onClick={handleConfirm}>
               Confirm Booking - {formatInr(catalogTotal)}
             </Button>
+            {bookingError && <p className="text-sm text-danger">{bookingError}</p>}
           </aside>
         </div>
       </div>
@@ -290,26 +427,26 @@ function CartPanel({ cartItems, onRemove, total }: { cartItems: CatalogTest[]; o
   );
 }
 
-function DoctorPanel({ selectedDoctorId, onSelect }: { selectedDoctorId: string; onSelect: (id: string) => void }) {
+function DoctorPanel({ doctors, pendingCounts, selectedDoctorId, onSelect }: { doctors: DoctorDocument[]; pendingCounts: Record<string, number>; selectedDoctorId: string; onSelect: (id: string) => void }) {
   return (
     <section className="rounded-card border border-border bg-white p-5">
       <h2 className="mb-3 text-sm font-bold text-ink">Assign Doctor</h2>
       <div className="grid gap-1.5">
-        {doctors.slice(0, 3).map((doctor, index) => {
-          const selected = selectedDoctorId === doctor.id;
+        {doctors.slice(0, 3).map((doctor) => {
+          const selected = selectedDoctorId === doctor._id;
           return (
             <button
               className={`flex items-center gap-2.5 rounded-ui border p-2 text-left transition ${selected ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-transparent hover:bg-surface-muted'}`}
-              key={doctor.id}
-              onClick={() => onSelect(doctor.id)}
+              key={doctor._id}
+              onClick={() => onSelect(doctor._id)}
               type="button"
             >
               <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-600 to-accent text-xs font-bold text-white">
-                {doctor.name.replace('Dr. ', '').charAt(0)}
+                {doctor.fullName.replace('Dr. ', '').charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-semibold text-ink">{doctor.name}</div>
-                <div className="text-[11px] text-ink-muted">{index + 2} pending</div>
+                <div className="flex items-center gap-2"><span className="truncate text-[13px] font-semibold text-ink">{doctor.fullName}</span><span className="rounded bg-muted px-1.5 py-px text-[10px] font-semibold text-ink-muted">{pendingCounts[doctor._id] ?? 0} pending</span></div>
+                <div className="text-[11px] text-ink-muted">{doctor.specialization ?? 'Doctor'}</div>
               </div>
               {selected && <Check className="shrink-0 text-brand-600" size={15} strokeWidth={3} />}
             </button>
@@ -320,19 +457,18 @@ function DoctorPanel({ selectedDoctorId, onSelect }: { selectedDoctorId: string;
   );
 }
 
-function SlotPanel({ selectedSlot, onSelect }: { selectedSlot: string; onSelect: (slot: string) => void }) {
+function SlotPanel({ availability, scheduledDate, onDateChange, selectedSlot, onSelect }: { availability: SlotAvailability[]; scheduledDate: string; onDateChange: (date: string) => void; selectedSlot: string; onSelect: (slot: string) => void }) {
   return (
     <section className="rounded-card border border-border bg-white p-5">
       <h2 className="mb-1 text-sm font-bold text-ink">Schedule Slot</h2>
-      <p className="mb-3 text-xs text-ink-muted">19 August 2026</p>
+      <Input className="mb-3 h-9" min={todayIsoDate()} onChange={(event) => onDateChange(event.target.value)} type="date" value={scheduledDate} />
       <div className="grid grid-cols-3 gap-1.5">
-        {slots.map((slot) => {
-          const unavailable = unavailableSlots.has(slot);
+        {availability.map(({ slot, available }) => {
           const selected = selectedSlot === slot;
           return (
             <button
-              className={`rounded-md border py-1.5 font-mono text-[11.5px] font-semibold transition ${selected ? 'border-brand-600 bg-brand-600 text-white' : unavailable ? 'cursor-not-allowed border-border bg-muted text-ink-muted line-through' : 'border-border bg-white text-ink hover:bg-brand-50'}`}
-              disabled={unavailable}
+              className={`rounded-md border py-1.5 font-mono text-[11.5px] font-semibold transition ${selected ? 'border-brand-600 bg-brand-600 text-white' : !available ? 'cursor-not-allowed border-border bg-muted text-ink-muted line-through' : 'border-border bg-white text-ink hover:bg-brand-50'}`}
+              disabled={!available}
               key={slot}
               onClick={() => onSelect(slot)}
               type="button"

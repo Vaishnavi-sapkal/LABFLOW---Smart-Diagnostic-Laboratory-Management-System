@@ -7,8 +7,20 @@
                    ],
     "name":  "labflow",
     "version":  "0.1.0",
+    "dependencies": {
+                       "@nestjs/passport": "^10.0.3",
+                       "passport": "^0.7.0",
+                       "passport-jwt": "^4.0.1"
+                   },
+    "devDependencies": {
+                           "@types/jest": "^29.5.14",
+                           "@types/passport-jwt": "^4.0.1",
+                           "jest": "^29.7.0",
+                           "ts-jest": "^29.2.5"
+                       },
     "scripts":  {
                     "validate":  "npm run validate:structure",
-                    "validate:structure":  "node scripts/validate-structure.js"
+                    "validate:structure":  "node scripts/validate-structure.js",
+                    "test:services": "jest --config jest.config.js"
                 }
 }

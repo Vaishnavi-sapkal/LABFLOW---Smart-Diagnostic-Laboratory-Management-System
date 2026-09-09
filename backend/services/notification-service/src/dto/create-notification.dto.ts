@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { NOTIFICATION_CATEGORIES, NOTIFICATION_PRIORITIES, NOTIFICATION_ROLES, NotificationCategory, NotificationPriority, NotificationRole } from '../notification.schema';
 
 export class CreateNotificationDto {
   @ApiPropertyOptional({ description: 'Individual recipient ID. Either userId/recipientId or role is required.' }) @IsOptional() @IsString() @IsNotEmpty() userId?: string;
   @ApiPropertyOptional({ description: 'Alias for userId.' }) @IsOptional() @IsString() @IsNotEmpty() recipientId?: string;
+  @ApiPropertyOptional({ description: 'Recipient email. A saved notification is emailed when SMTP is configured.' }) @IsOptional() @IsEmail() @IsNotEmpty() recipientEmail?: string;
   @ApiPropertyOptional({ enum: NOTIFICATION_ROLES }) @IsOptional() @IsEnum(NOTIFICATION_ROLES) role?: NotificationRole;
   @ApiProperty({ example: 'Sample collection is overdue' }) @IsString() @IsNotEmpty() @MaxLength(160) title!: string;
   @ApiProperty({ example: 'Sample SMP-2408-014 has not been collected within its scheduled window.' }) @IsString() @IsNotEmpty() @MaxLength(2000) message!: string;

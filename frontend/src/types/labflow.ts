@@ -48,7 +48,7 @@ export interface Result {
   value: string;
   unit: string;
   range: string;
-  flag: 'Normal' | 'High' | 'Low';
+  flag: 'Normal' | 'High' | 'Low' | 'Pending';
 }
 
 export interface Report {

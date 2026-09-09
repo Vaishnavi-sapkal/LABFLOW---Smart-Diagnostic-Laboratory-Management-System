@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { CreateTestDto } from './dto/create-test.dto';
@@ -15,7 +15,15 @@ export class TestService {
   async create(createTestDto: CreateTestDto) {
     const data = this.normalizePackageFields(this.normalizeCode(createTestDto));
     await this.validateIncludedTests(data.isPackage, data.includedTestIds);
-    return this.testModel.create(data);
+    try {
+      return await this.testModel.create(data);
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) {
+        throw new ConflictException(`Test code "${data.code}" already exists`);
+      }
+
+      throw error;
+    }
   }
 
   findAll(category?: string, isPackage?: string, search?: string) {

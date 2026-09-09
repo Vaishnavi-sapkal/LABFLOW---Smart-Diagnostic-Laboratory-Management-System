@@ -1,0 +1,69 @@
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  SetMetadata,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Reflector } from "@nestjs/core";
+import { AuthGuard, PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+export const ROLES_KEY = "roles";
+export const IS_PUBLIC_KEY = "isPublic";
+export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(config: ConfigService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: config.get<string>("JWT_SECRET") || "default-secret",
+    });
+  }
+  validate(payload: { sub: string; email: string; role: string }) {
+    return { userId: payload.sub, email: payload.email, role: payload.role };
+  }
+}
+@Injectable()
+export class JwtAuthGuard extends AuthGuard("jwt") {
+  constructor(private readonly reflector: Reflector) {
+    super();
+  }
+  canActivate(context: ExecutionContext) {
+    if (
+      this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    )
+      return true;
+    return super.canActivate(context);
+  }
+}
+@Injectable()
+export class RolesGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+  canActivate(context: ExecutionContext) {
+    if (
+      this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    )
+      return true;
+    const roles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!roles?.length) return true;
+    const user = context.switchToHttp().getRequest().user;
+    if (!user) throw new ForbiddenException("User information not found");
+    if (!roles.includes(user.role))
+      throw new ForbiddenException(
+        "You do not have permission to access this resource",
+      );
+    return true;
+  }
+}

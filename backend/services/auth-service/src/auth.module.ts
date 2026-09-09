@@ -1,13 +1,14 @@
-import { Module } from '@nestjs/common';
+import { BadRequestException, Module, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule, getModelToken } from '@nestjs/mongoose';
 import { JwtModule, JwtService } from '@nestjs/jwt';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 
 import { User, UserSchema } from './auth.schema';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { RegistrationGuard } from './registration.guard';
 
 @Module({
   imports: [
@@ -53,11 +54,13 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [
         getModelToken(User.name),
         JwtService,
+        ConfigService,
       ],
 
       useFactory: (
         userModel: Model<User>,
         jwtService: JwtService,
+        configService: ConfigService,
       ) => ({
 
         // =========================
@@ -138,6 +141,63 @@ import { JwtStrategy } from './jwt.strategy';
             },
           };
         },
+
+        listUsers: async () => {
+          const users = await userModel.find().select('-password').sort({ createdAt: -1 }).lean().exec();
+          return users.map((user: any) => ({
+            id: String(user._id), name: user.name, email: user.email, role: user.role, isActive: user.isActive,
+          }));
+        },
+
+        getActiveUser: async (userId: string) => {
+          const user = await userModel.findById(userId).select('-password').lean().exec();
+          if (!user || !user.isActive) throw new Error('User account is inactive');
+          return { userId: String(user._id), email: user.email, role: user.role };
+        },
+
+        deleteUser: async (id: string, actorUserId: string) => {
+          if (!isValidObjectId(id)) throw new BadRequestException('A valid user ID is required');
+          if (String(id) === String(actorUserId)) {
+            throw new Error('You cannot delete your own account while logged in.');
+          }
+
+          const user = await userModel.findById(id).exec();
+          if (!user) throw new NotFoundException('User account was not found');
+
+          // Fail closed: an interrupted deletion leaves a disabled account, never an
+          // active account whose profile has already been removed/deactivated.
+          if (user.isActive) {
+            user.isActive = false;
+            await user.save();
+          }
+
+          const internalSecret = configService.get<string>('INTERNAL_SERVICE_SECRET');
+          if (!internalSecret) throw new ServiceUnavailableException('INTERNAL_SERVICE_SECRET is not configured');
+          const baseUrl = user.role === 'doctor'
+            ? configService.get<string>('DOCTOR_SERVICE_URL') ?? 'http://localhost:3005'
+            : configService.get<string>('PATIENT_SERVICE_URL') ?? 'http://localhost:3002';
+          const path = user.role === 'doctor'
+            ? `/doctors/by-user/${encodeURIComponent(String(user._id))}/deactivate`
+            : `/patients/by-user/${encodeURIComponent(String(user._id))}`;
+
+          if (user.role === 'doctor' || user.role === 'patient') {
+            let response: Response;
+            try {
+              response = await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, {
+                method: user.role === 'doctor' ? 'PATCH' : 'DELETE',
+                headers: { 'x-internal-service-key': internalSecret },
+              });
+            } catch {
+              throw new ServiceUnavailableException(`Unable to contact the ${user.role} service`);
+            }
+            if (!response.ok) {
+              throw new ServiceUnavailableException(`Unable to ${user.role === 'doctor' ? 'deactivate the doctor profile' : 'delete the patient profile'}`);
+            }
+          }
+
+          await user.deleteOne();
+          return { deleted: true, id: String(user._id), role: user.role };
+        },
       }),
     },
 
@@ -145,6 +205,7 @@ import { JwtStrategy } from './jwt.strategy';
     // JWT STRATEGY
     // =========================
     JwtStrategy,
+    RegistrationGuard,
   ],
 })
 export class AuthModule {}

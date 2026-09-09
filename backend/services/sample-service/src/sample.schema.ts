@@ -13,8 +13,11 @@ export class Sample {
   @Prop({ required: true, index: true }) patientId!: string;
   @Prop({ required: true, trim: true }) patientName!: string;
   @Prop({ required: true, trim: true }) testDisplayName!: string;
+  @Prop({ required: true, trim: true }) sampleType!: string;
   @Prop({ type: String, enum: SAMPLE_PRIORITIES, default: 'routine' })
   priority!: (typeof SAMPLE_PRIORITIES)[number];
+
+  @Prop({ required: true, default: Date.now }) collectedAt!: Date;
 
   @Prop({ type: String, enum: SAMPLE_STATUSES, default: 'collected', index: true })
   status!: SampleStatus;

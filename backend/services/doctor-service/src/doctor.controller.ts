@@ -1,11 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { DoctorService } from './doctor.service';
+import { Roles, RolesGuard } from './auth';
+import { InternalService, InternalServiceGuard } from './internal-service.guard';
 
 @ApiTags('Doctors')
 @Controller('doctors')
+@UseGuards(InternalServiceGuard, RolesGuard)
+@Roles('admin')
 export class DoctorController {
   constructor(private readonly doctorService: DoctorService) {}
 
@@ -14,12 +18,26 @@ export class DoctorController {
   create(@Body() createDoctorDto: CreateDoctorDto) { return this.doctorService.create(createDoctorDto); }
 
   @Get()
+  @InternalService()
+  @Roles('admin', 'receptionist')
   @ApiOperation({ summary: 'List doctors, optionally filtered by active status or name' })
   findAll(@Query('isActive') isActive?: string, @Query('search') search?: string) {
     return this.doctorService.findAll(isActive, search);
   }
 
+  @Get('me')
+  @Roles('doctor')
+  @ApiOperation({ summary: 'Get the authenticated doctor profile' })
+  findMe(@Req() request: any) { return this.doctorService.findByUserId(request.user.userId); }
+
+  @Patch('by-user/:userId/deactivate')
+  @InternalService()
+  @ApiOperation({ summary: 'Deactivate a doctor profile linked to an auth user (internal)' })
+  deactivateByUserId(@Param('userId') userId: string) { return this.doctorService.deactivateByUserId(userId); }
+
   @Get(':id')
+  @InternalService()
+  @Roles('admin', 'receptionist')
   @ApiOperation({ summary: 'Get a doctor profile by ID' })
   findOne(@Param('id') id: string) { return this.doctorService.findOne(id); }
 

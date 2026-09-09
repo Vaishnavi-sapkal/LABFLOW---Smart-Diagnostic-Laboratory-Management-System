@@ -53,7 +53,8 @@ export class ResultService {
 
     try {
       testResponse = await axios.get(
-        `${baseUrl}/${data.testId}`,
+        `${baseUrl.replace(/\/$/, '')}/tests/${data.testId}`,
+        { headers: this.internalHeaders() },
       );
     } catch {
       throw new NotFoundException(
@@ -277,5 +278,11 @@ export class ResultService {
     return {
       message: 'Result deleted successfully',
     };
+  }
+
+  private internalHeaders() {
+    const secret = this.configService.get<string>('INTERNAL_SERVICE_SECRET');
+    if (!secret) throw new BadRequestException('INTERNAL_SERVICE_SECRET is not configured');
+    return { 'x-internal-service-key': secret };
   }
 }

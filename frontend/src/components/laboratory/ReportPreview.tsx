@@ -1,6 +1,6 @@
 import { StatusBadge } from '../ui/StatusBadge';
 
-export function ReportPreview({ reportId, patient, doctor, tests }: { reportId: string; patient: string; doctor: string; tests: Array<{ parameter: string; value: string; unit: string; range: string; flag?: string }> }) {
+export function ReportPreview({ reportId, patient, doctor, sampleId, reportDate, tests }: { reportId: string; patient: string; doctor: string; sampleId: string; reportDate: string; tests: Array<{ parameter: string; value: string; unit: string; range: string; flag?: string }> }) {
   return (
     <article className="card overflow-hidden">
       <div className="border-b border-border bg-brand-50 p-5">
@@ -13,8 +13,8 @@ export function ReportPreview({ reportId, patient, doctor, tests }: { reportId: 
         <div className="grid gap-3 rounded-ui border border-border p-4 text-sm md:grid-cols-2">
           <div><span className="text-ink-muted">Patient</span><p className="font-semibold">{patient}</p></div>
           <div><span className="text-ink-muted">Verified by</span><p className="font-semibold">{doctor}</p></div>
-          <div><span className="text-ink-muted">Sample ID</span><p className="font-mono text-xs font-semibold">LAB-2026-08421</p></div>
-          <div><span className="text-ink-muted">Report date</span><p className="font-semibold">25 Aug 2026</p></div>
+          <div><span className="text-ink-muted">Sample ID</span><p className="font-mono text-xs font-semibold">{sampleId}</p></div>
+          <div><span className="text-ink-muted">Report date</span><p className="font-semibold">{reportDate}</p></div>
         </div>
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-full text-left text-sm">

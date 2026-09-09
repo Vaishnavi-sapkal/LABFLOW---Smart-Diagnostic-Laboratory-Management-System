@@ -1,5 +1,5 @@
 import type { LabTest } from '../../types/labflow';
-import { formatInr } from '../../data/mockData';
+import { formatInr } from '../../lib/currency';
 import { Checkbox } from '../ui/Checkbox';
 
 export function TestCard({ test, selected, onToggle }: { test: LabTest; selected: boolean; onToggle: (selected: boolean) => void }) {

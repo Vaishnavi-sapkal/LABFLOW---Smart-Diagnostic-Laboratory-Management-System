@@ -1,11 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdvanceStatusDto } from './dto/advance-status.dto';
 import { CreateSampleDto } from './dto/create-sample.dto';
 import { SampleService } from './sample.service';
+import { Roles, RolesGuard } from './auth';
+import { InternalService, InternalServiceGuard } from './internal-service.guard';
 
 @ApiTags('Samples')
 @Controller('samples')
+@UseGuards(InternalServiceGuard, RolesGuard)
+@Roles('admin', 'technician', 'lab_technician')
 export class SampleController {
   constructor(private readonly sampleService: SampleService) {}
 
@@ -14,10 +18,12 @@ export class SampleController {
   create(@Body() dto: CreateSampleDto) { return this.sampleService.create(dto); }
 
   @Get()
+  @InternalService()
   @ApiOperation({ summary: 'List samples grouped for Kanban columns, optionally filtered by patient' })
   findAll(@Query('patientId') patientId?: string) { return this.sampleService.findAllGrouped(patientId); }
 
   @Get(':id')
+  @InternalService()
   @ApiOperation({ summary: 'Get a sample by ID' })
   findOne(@Param('id') id: string) { return this.sampleService.findOne(id); }
 

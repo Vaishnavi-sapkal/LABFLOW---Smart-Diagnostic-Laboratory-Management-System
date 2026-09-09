@@ -9,6 +9,8 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 
 import {
@@ -21,15 +23,19 @@ import {
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationQueryDto } from './dto/notification-query.dto';
 import { NotificationService } from './notification.service';
+import { InternalService, InternalServiceGuard, Public, Roles, RolesGuard } from './auth';
 
 @ApiTags('Notifications')
 @Controller('notifications')
+@UseGuards(InternalServiceGuard, RolesGuard)
+@Roles('admin', 'doctor', 'receptionist', 'technician', 'lab_technician', 'patient')
 export class NotificationController {
   constructor(
     private readonly notificationService: NotificationService,
   ) {}
 
   @Get('health')
+  @Public()
   @ApiOperation({ summary: 'Check notification service health' })
   health() {
     return {
@@ -39,6 +45,8 @@ export class NotificationController {
   }
 
   @Post()
+  @InternalService()
+  @Roles('admin')
   @ApiOperation({
     summary: 'Create an in-app notification for a user or role',
   })
@@ -52,8 +60,8 @@ export class NotificationController {
   @ApiOperation({
     summary: 'List notifications with UI dashboard summary data',
   })
-  findAll(@Query() query: NotificationQueryDto) {
-    return this.notificationService.findAll(query);
+  findAll(@Query() query: NotificationQueryDto, @Req() request: any) {
+    return this.notificationService.findAll(query, request.user);
   }
 
   @Patch('read-all')
@@ -61,26 +69,26 @@ export class NotificationController {
   @ApiOperation({
     summary: 'Mark all unread notifications for a user or role as read',
   })
-  markAllAsRead(@Query() query: NotificationQueryDto) {
-    return this.notificationService.markAllAsRead(query);
+  markAllAsRead(@Query() query: NotificationQueryDto, @Req() request: any) {
+    return this.notificationService.markAllAsRead(query, request.user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a notification by ID' })
-  findOne(@Param('id') id: string) {
-    return this.notificationService.findOne(id);
+  findOne(@Param('id') id: string, @Req() request: any) {
+    return this.notificationService.findOne(id, request.user);
   }
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a notification as read' })
-  markAsRead(@Param('id') id: string) {
-    return this.notificationService.markAsRead(id);
+  markAsRead(@Param('id') id: string, @Req() request: any) {
+    return this.notificationService.markAsRead(id, request.user);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a notification by ID' })
-  remove(@Param('id') id: string) {
-    return this.notificationService.remove(id);
+  remove(@Param('id') id: string, @Req() request: any) {
+    return this.notificationService.remove(id, request.user);
   }
 }

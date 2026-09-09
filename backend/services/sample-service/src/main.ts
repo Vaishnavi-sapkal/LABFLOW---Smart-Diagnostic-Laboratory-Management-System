@@ -6,35 +6,40 @@ import * as dns from 'node:dns';
 import { SampleModule } from './sample.module';
 
 async function bootstrap() {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
 
-  const app = await NestFactory.create(SampleModule);
+    const app = await NestFactory.create(SampleModule);
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+      }),
+    );
 
-  const config = new DocumentBuilder()
-    .setTitle('LabFlow Sample Service')
-    .setDescription('Laboratory sample tracking APIs')
-    .setVersion('1.0')
-    .build();
+    const config = new DocumentBuilder()
+      .setTitle('LabFlow Sample Service')
+      .setDescription('Laboratory sample tracking APIs')
+      .setVersion('1.0')
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+    const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('api', app, document);
+    SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
+    await app.listen(process.env.PORT ?? 3000);
 
-  console.log(
-    `Sample Service running on http://localhost:${process.env.PORT ?? 3000}`,
-  );
-  console.log(
-    `Swagger: http://localhost:${process.env.PORT ?? 3000}/api`,
-  );
+    console.log(
+      `Sample Service running on http://localhost:${process.env.PORT ?? 3000}`,
+    );
+    console.log(
+      `Swagger: http://localhost:${process.env.PORT ?? 3000}/api`,
+    );
+  } catch (error) {
+    console.error('Sample Service failed to start:', error);
+    process.exit(1);
+  }
 }
 
 void bootstrap();
