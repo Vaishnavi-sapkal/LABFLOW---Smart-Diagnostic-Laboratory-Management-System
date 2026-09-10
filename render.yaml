@@ -149,7 +149,7 @@ services:
     plan: free
     dockerfilePath: backend/services/result-service/Dockerfile.render
     dockerContext: .
-    healthCheckPath: /health
+    healthCheckPath: /results/health
     envVars:
       - key: PORT
         value: "10000"
@@ -211,7 +211,7 @@ services:
     plan: free
     dockerfilePath: backend/services/notification-service/Dockerfile.render
     dockerContext: .
-    healthCheckPath: /health
+    healthCheckPath: /notifications/health
     envVars:
       - key: PORT
         value: "10000"
