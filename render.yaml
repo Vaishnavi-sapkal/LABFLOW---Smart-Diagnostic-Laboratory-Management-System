@@ -1,0 +1,284 @@
+envVarGroups:
+  - name: labflow-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_SERVICE_SECRET
+        generateValue: true
+
+services:
+  - type: web
+    name: labflow-api-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/api-gateway/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - fromGroup: labflow-shared
+      - key: AUTH_SERVICE_URL
+        value: https://labflow-auth-service.onrender.com
+      - key: PATIENT_SERVICE_URL
+        value: https://labflow-patient-service.onrender.com
+      - key: TEST_SERVICE_URL
+        value: https://labflow-test-service.onrender.com
+      - key: BOOKING_SERVICE_URL
+        value: https://labflow-booking-service.onrender.com
+      - key: DOCTOR_SERVICE_URL
+        value: https://labflow-doctor-service.onrender.com
+      - key: SAMPLE_SERVICE_URL
+        value: https://labflow-sample-service.onrender.com
+      - key: RESULT_SERVICE_URL
+        value: https://labflow-result-service.onrender.com
+      - key: VERIFICATION_SERVICE_URL
+        value: https://labflow-verification-service.onrender.com
+      - key: BILLING_SERVICE_URL
+        value: https://labflow-billing-service.onrender.com
+      - key: NOTIFICATION_SERVICE_URL
+        value: https://labflow-notification-service.onrender.com
+      - key: REPORT_SERVICE_URL
+        value: https://labflow-report-service.onrender.com
+      - key: DASHBOARD_SERVICE_URL
+        value: https://labflow-dashboard-service.onrender.com
+
+  - type: web
+    name: labflow-auth-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/auth-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: DOCTOR_SERVICE_URL
+        value: https://labflow-doctor-service.onrender.com
+      - key: PATIENT_SERVICE_URL
+        value: https://labflow-patient-service.onrender.com
+
+  - type: web
+    name: labflow-patient-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/patient-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: BOOKING_SERVICE_URL
+        value: https://labflow-booking-service.onrender.com
+      - key: REPORT_SERVICE_URL
+        value: https://labflow-report-service.onrender.com
+      - key: BILLING_SERVICE_URL
+        value: https://labflow-billing-service.onrender.com
+
+  - type: web
+    name: labflow-test-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/test-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+
+  - type: web
+    name: labflow-booking-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/booking-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: TEST_SERVICE_URL
+        value: https://labflow-test-service.onrender.com
+      - key: DOCTOR_SERVICE_URL
+        value: https://labflow-doctor-service.onrender.com
+
+  - type: web
+    name: labflow-doctor-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/doctor-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+
+  - type: web
+    name: labflow-sample-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/sample-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: BOOKING_SERVICE_URL
+        value: https://labflow-booking-service.onrender.com
+
+  - type: web
+    name: labflow-result-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/result-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: TEST_SERVICE_URL
+        value: https://labflow-test-service.onrender.com
+
+  - type: web
+    name: labflow-verification-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/verification-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: RESULT_SERVICE_URL
+        value: https://labflow-result-service.onrender.com
+      - key: SAMPLE_SERVICE_URL
+        value: https://labflow-sample-service.onrender.com
+      - key: DOCTOR_SERVICE_URL
+        value: https://labflow-doctor-service.onrender.com
+      - key: REPORT_SERVICE_URL
+        value: https://labflow-report-service.onrender.com
+      - key: PATIENT_SERVICE_URL
+        value: https://labflow-patient-service.onrender.com
+      - key: NOTIFICATION_SERVICE_URL
+        value: https://labflow-notification-service.onrender.com
+
+  - type: web
+    name: labflow-billing-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/billing-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: BOOKING_SERVICE_URL
+        value: https://labflow-booking-service.onrender.com
+      - key: PATIENT_SERVICE_URL
+        value: https://labflow-patient-service.onrender.com
+      - key: DOCTOR_SERVICE_URL
+        value: https://labflow-doctor-service.onrender.com
+
+  - type: web
+    name: labflow-notification-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/notification-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+  - type: web
+    name: labflow-report-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/report-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: VERIFICATION_SERVICE_URL
+        value: https://labflow-verification-service.onrender.com
+      - key: RESULT_SERVICE_URL
+        value: https://labflow-result-service.onrender.com
+      - key: SAMPLE_SERVICE_URL
+        value: https://labflow-sample-service.onrender.com
+      - key: PATIENT_SERVICE_URL
+        value: https://labflow-patient-service.onrender.com
+      - key: DOCTOR_SERVICE_URL
+        value: https://labflow-doctor-service.onrender.com
+
+  - type: web
+    name: labflow-dashboard-service
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/services/dashboard-service/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: MONGODB_URI
+        sync: false
+      - fromGroup: labflow-shared
+      - key: PATIENT_SERVICE_URL
+        value: https://labflow-patient-service.onrender.com
+      - key: BOOKING_SERVICE_URL
+        value: https://labflow-booking-service.onrender.com
+      - key: TEST_SERVICE_URL
+        value: https://labflow-test-service.onrender.com
+      - key: BILLING_SERVICE_URL
+        value: https://labflow-billing-service.onrender.com
+      - key: SAMPLE_SERVICE_URL
+        value: https://labflow-sample-service.onrender.com
+      - key: RESULT_SERVICE_URL
+        value: https://labflow-result-service.onrender.com
+      - key: VERIFICATION_SERVICE_URL
+        value: https://labflow-verification-service.onrender.com
+      - key: REPORT_SERVICE_URL
+        value: https://labflow-report-service.onrender.com

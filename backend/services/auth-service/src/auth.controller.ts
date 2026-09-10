@@ -181,3 +181,13 @@ export class AuthController {
     }
   }
 }
+
+@ApiTags('Health')
+@Controller()
+export class HealthController {
+  @Get('health')
+  @ApiOperation({ summary: 'Check auth service health' })
+  health() {
+    return { status: 'ok', service: 'auth' };
+  }
+}

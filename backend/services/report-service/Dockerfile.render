@@ -1,0 +1,22 @@
+FROM node:20-alpine AS build
+
+ARG SERVICE_PATH=backend/services/report-service
+
+WORKDIR /app
+
+COPY . .
+RUN npm ci
+RUN npm run build --workspace="@labflow/report-service"
+
+FROM node:20-alpine AS runtime
+
+ARG SERVICE_PATH=backend/services/report-service
+
+WORKDIR /app/${SERVICE_PATH}
+
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/${SERVICE_PATH}/dist ./dist
+
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]

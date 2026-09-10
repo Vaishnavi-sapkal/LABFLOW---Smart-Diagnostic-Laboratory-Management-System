@@ -6,7 +6,7 @@ import { isValidObjectId, Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 
 import { User, UserSchema } from './auth.schema';
-import { AuthController } from './auth.controller';
+import { AuthController, HealthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { RegistrationGuard } from './registration.guard';
 
@@ -45,7 +45,7 @@ import { RegistrationGuard } from './registration.guard';
     }),
   ],
 
-  controllers: [AuthController],
+  controllers: [AuthController, HealthController],
 
   providers: [
     {
