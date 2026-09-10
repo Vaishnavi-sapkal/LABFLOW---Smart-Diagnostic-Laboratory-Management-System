@@ -259,7 +259,7 @@ services:
     plan: free
     dockerfilePath: backend/services/dashboard-service/Dockerfile.render
     dockerContext: .
-    healthCheckPath: /health
+    healthCheckPath: /dashboard/health
     envVars:
       - key: PORT
         value: "10000"
